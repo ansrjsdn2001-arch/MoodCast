@@ -1,4 +1,4 @@
-import styles from '../AdminPages.module.css';
+﻿import styles from '../adminComponentsCss/EmptyState.module.css';
 
 /* ==========================================================================
  * EmptyState 컴포넌트

@@ -1,5 +1,5 @@
-import { EmptyState } from './EmptyState';
-import styles from '../AdminPages.module.css';
+﻿import { EmptyState } from './EmptyState';
+import styles from '../adminComponentsCss/TableShell.module.css';
 
 /* ==========================================================================
  * TableShell 컴포넌트
@@ -23,7 +23,7 @@ export function TableShell({ title, columns, children }) {
         <h2>{title}</h2>
       </div>
       <div className={styles.tableWrap}>
-        <table>
+        <table className={styles.table}>
           <thead>
             <tr>
               {columns.map((column) => (

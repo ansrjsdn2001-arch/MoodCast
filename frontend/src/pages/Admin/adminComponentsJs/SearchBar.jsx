@@ -1,5 +1,5 @@
-import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
-import styles from '../AdminPages.module.css';
+﻿import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
+import styles from '../adminComponentsCss/SearchBar.module.css';
 
 /* ==========================================================================
  * SearchBar 컴포넌트

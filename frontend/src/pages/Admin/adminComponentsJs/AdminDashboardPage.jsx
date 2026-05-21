@@ -1,3 +1,4 @@
+﻿import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import GroupOutlinedIcon from '@mui/icons-material/GroupOutlined';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
@@ -8,7 +9,7 @@ import { EmptyState } from './EmptyState';
 import { MetricCard } from './MetricCard';
 import { SegmentedControl } from './SegmentedControl';
 import { adminNavItems } from './adminConfig';
-import styles from '../AdminPages.module.css';
+import styles from '../adminComponentsCss/AdminDashboardPage.module.css';
 
 /* ==========================================================================
  * 관리자 대시보드 페이지
@@ -24,6 +25,14 @@ import styles from '../AdminPages.module.css';
  * 현재는 백엔드를 붙이지 않았으므로 모든 데이터 영역은 EmptyState로 표시합니다.
  * ========================================================================== */
 export function AdminDashboardPage() {
+  const [signupPeriod, setSignupPeriod] = useState('일');
+
+  const signupDescription = {
+    일: '일 단위 신규 가입자 데이터가 연결되면 그래프가 표시됩니다.',
+    주: '주 단위 신규 가입자 데이터가 연결되면 그래프가 표시됩니다.',
+    월: '월 단위 신규 가입자 데이터가 연결되면 그래프가 표시됩니다.',
+  };
+
   return (
     <AdminLayout title="관리자 대시보드" description="서비스 운영 현황을 한눈에 확인하세요.">
       <section className={styles.metricGrid}>
@@ -37,11 +46,11 @@ export function AdminDashboardPage() {
         <section className={`${styles.panel} ${styles.widePanel}`}>
           <div className={styles.panelHead}>
             <h2>신규 가입자 추이</h2>
-            <SegmentedControl labels={['일', '주', '월']} />
+            <SegmentedControl labels={['일', '주', '월']} selectedLabel={signupPeriod} onSelect={setSignupPeriod} />
           </div>
           <div className={`${styles.chartBox} ${styles.line}`}>
             <div className={styles.chartGrid} />
-            <EmptyState title="가입자 데이터가 없습니다" description="일/주/월 단위 데이터가 연결되면 그래프가 표시됩니다." />
+            <EmptyState title={`${signupPeriod} 단위 가입자 데이터가 없습니다`} description={signupDescription[signupPeriod]} />
           </div>
         </section>
 

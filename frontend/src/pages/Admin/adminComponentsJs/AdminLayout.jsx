@@ -1,10 +1,10 @@
-import { NavLink } from 'react-router-dom';
+﻿import { NavLink } from 'react-router-dom';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import HelpOutlineOutlinedIcon from '@mui/icons-material/HelpOutlineOutlined';
 import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined';
 import { Logo } from '../../../components/common/Logo';
 import { adminNavItems } from './adminConfig';
-import styles from '../AdminPages.module.css';
+import styles from '../adminComponentsCss/AdminLayout.module.css';
 
 /* ==========================================================================
  * AdminLayout 컴포넌트
@@ -34,7 +34,7 @@ export function AdminLayout({ children, title, description }) {
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
         <div className={styles.brand}>
-          <Logo compact />
+          <Logo compact to="/admin/dashboard" />
           <div>
             <strong>MoodCast</strong>
             <span>Admin Console</span>
@@ -50,13 +50,13 @@ export function AdminLayout({ children, title, description }) {
           ))}
         </nav>
 
-        <div className={styles.adminProfile}>
+        <NavLink className={styles.adminProfile} to="/admin/profile">
           <AccountCircleOutlinedIcon />
           <div>
             <strong>관리자</strong>
             <span>admin · super</span>
           </div>
-        </div>
+        </NavLink>
       </aside>
 
       <main className={styles.main}>
@@ -72,9 +72,9 @@ export function AdminLayout({ children, title, description }) {
             <button type="button" aria-label="도움말">
               <HelpOutlineOutlinedIcon />
             </button>
-            <button type="button" aria-label="관리자 프로필">
+            <NavLink className={styles.headerIconLink} to="/admin/profile" aria-label="관리자 프로필">
               <AccountCircleOutlinedIcon />
-            </button>
+            </NavLink>
           </div>
         </header>
         {children}

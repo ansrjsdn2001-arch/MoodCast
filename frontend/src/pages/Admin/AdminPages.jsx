@@ -1,10 +1,13 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { AdminDashboardPage } from './amdinComponents/AdminDashboardPage';
-import { ContentManagementPage } from './amdinComponents/ContentManagementPage';
-import { ReportManagementPage } from './amdinComponents/ReportManagementPage';
-import { StatisticsDashboardPage } from './amdinComponents/StatisticsDashboardPage';
-import { UserManagementPage } from './amdinComponents/UserManagementPage';
-import { pageTitles } from './amdinComponents/adminConfig';
+import { AdminCreatePage } from './adminComponentsJs/AdminCreatePage';
+import { AdminDashboardPage } from './adminComponentsJs/AdminDashboardPage';
+import { AdminProfilePage } from './adminComponentsJs/AdminProfilePage';
+import { ContentManagementPage } from './adminComponentsJs/ContentManagementPage';
+import { NoticeManagementPage } from './adminComponentsJs/NoticeManagementPage';
+import { ReportManagementPage } from './adminComponentsJs/ReportManagementPage';
+import { StatisticsDashboardPage } from './adminComponentsJs/StatisticsDashboardPage';
+import { UserManagementPage } from './adminComponentsJs/UserManagementPage';
+import { pageTitles } from './adminComponentsJs/adminConfig';
 
 /* ==========================================================================
  * 관리자 페이지 라우팅 파일
@@ -12,7 +15,7 @@ import { pageTitles } from './amdinComponents/adminConfig';
  * 이 파일은 "주소(URL)"와 "보여줄 페이지 컴포넌트"를 연결하는 역할만 합니다.
  *
  * 이전에는 이 파일 안에 모든 관리자 화면 코드가 들어 있었지만,
- * 유지보수를 쉽게 하기 위해 실제 화면 코드는 amdinComponents 폴더로 분리했습니다.
+ * 유지보수를 쉽게 하기 위해 실제 화면 코드는 adminComponentsJs 폴더로 분리했습니다.
  *
  * 예시:
  * - /admin/dashboard 주소로 들어오면 AdminDashboardPage가 렌더링됩니다.
@@ -27,9 +30,12 @@ export function AdminRoutes() {
       <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="/dashboard" element={<AdminDashboardPage />} />
       <Route path="/users" element={<UserManagementPage />} />
+      <Route path="/users/new" element={<AdminCreatePage />} />
       <Route path="/content" element={<ContentManagementPage />} />
+      <Route path="/notices" element={<NoticeManagementPage />} />
       <Route path="/reports" element={<ReportManagementPage />} />
       <Route path="/statistics" element={<StatisticsDashboardPage />} />
+      <Route path="/profile" element={<AdminProfilePage />} />
       <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
     </Routes>
   );
