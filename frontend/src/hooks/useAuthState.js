@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 export function useAuthState() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     const stored = window.localStorage.getItem('moodcast-auth');
-    return stored === null ? true : stored === 'true';
+    return stored === 'true';
   });
 
   useEffect(() => {

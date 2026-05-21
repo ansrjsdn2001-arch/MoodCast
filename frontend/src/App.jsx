@@ -12,6 +12,7 @@ import { CreatePostPage } from './pages/CreatePost/CreatePostPage';
 import { ProfileSetupPage } from './pages/ProfileSetup/ProfileSetupPage';
 import { LoginPage } from './pages/Auth/LoginPage';
 import { AdminRoutes } from './pages/Admin/AdminPages';
+import { SignupPage } from './pages/Auth/SignupPage';
 
 function AppRoutes() {
   const desktop = useIsDesktop();
@@ -20,8 +21,10 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Navigate to="/app/feed" replace />} />
       <Route path="/auth/login" element={<LoginPage />} />
+      <Route path="/auth/signup" element={<SignupPage />} />
       <Route path="/auth/setup" element={<ProfileSetupPage />} />
       <Route path="/app/login" element={<LoginPage />} />
+      <Route path="/app/signup" element={<SignupPage />} />
       <Route path="/app/profile-setup" element={<ProfileSetupPage />} />
       <Route path="/app/feed" element={desktop ? <HomeFeedPage /> : <MobileFeedPage />} />
       <Route path="/app/mobile-feed" element={<MobileFeedPage />} />
