@@ -1,14 +1,22 @@
-import { sanctionOptions } from './reportConstants';
-import { DrawerHeader } from './ReportDrawerHeader';
-import styles from '../../adminComponentsCss/reportManagement/ReportManagementPage.module.css';
+import { sanctionOptions } from "./reportConstants";
+import { DrawerHeader } from "./ReportDrawerHeader";
+import styles from "../../adminComponentsCss/reportManagement/ReportManagementPage.module.css";
 
-export function ReportOptionStep({ selectedAction, onBack, onClose, onSelectAction, onNext }) {
+export function ReportOptionStep({
+  selectedAction,
+  onBack,
+  onClose,
+  onSelectAction,
+  onNext,
+}) {
   return (
     <>
       <DrawerHeader title="처리 옵션 선택" onBack={onBack} onClose={onClose} />
 
       <div className={styles.drawerBody}>
-        <p className={styles.guideText}>선택한 신고를 어떤 방식으로 처리할지 선택해주세요.</p>
+        <p className={styles.guideText}>
+          선택한 신고를 어떤 방식으로 처리할지 선택해주세요.
+        </p>
 
         {/* 제재 옵션 선택 ---------------------------------- */}
         <section className={styles.optionList}>
@@ -19,7 +27,7 @@ export function ReportOptionStep({ selectedAction, onBack, onClose, onSelectActi
             return (
               <button
                 key={option.id}
-                className={`${styles.optionCard} ${styles[option.tone]} ${isSelected ? styles.selectedOption : ''}`}
+                className={`${styles.optionCard} ${styles[option.tone]} ${isSelected ? styles.selectedOption : ""}`}
                 type="button"
                 onClick={() => onSelectAction(option.id)}
               >
@@ -43,10 +51,19 @@ export function ReportOptionStep({ selectedAction, onBack, onClose, onSelectActi
       </div>
 
       <footer className={styles.drawerFooter}>
-        <button className={styles.secondaryButton} type="button" onClick={onBack}>
+        <button
+          className={styles.secondaryButton}
+          type="button"
+          onClick={onBack}
+        >
           취소
         </button>
-        <button className={styles.primaryButton} type="button" disabled={!selectedAction} onClick={onNext}>
+        <button
+          className={styles.primaryButton}
+          type="button"
+          disabled={!selectedAction}
+          onClick={onNext}
+        >
           다음
         </button>
       </footer>

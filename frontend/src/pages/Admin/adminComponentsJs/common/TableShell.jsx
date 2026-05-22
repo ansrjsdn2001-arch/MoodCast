@@ -1,5 +1,5 @@
-﻿import { EmptyState } from './EmptyState';
-import styles from '../../adminComponentsCss/common/TableShell.module.css';
+﻿import { EmptyState } from "./EmptyState";
+import styles from "../../adminComponentsCss/common/TableShell.module.css";
 
 /* ==========================================================================
  * TableShell 컴포넌트
@@ -52,7 +52,10 @@ export function EmptyTableRow({ colSpan, label }) {
   return (
     <tr>
       <td colSpan={colSpan}>
-        <EmptyState title={label} description="현재는 더미데이터 없이 화면 구조만 준비되어 있습니다." />
+        <EmptyState
+          title={label}
+          description="현재는 더미데이터 없이 화면 구조만 준비되어 있습니다."
+        />
       </td>
     </tr>
   );

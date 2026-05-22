@@ -1,4 +1,4 @@
-﻿import styles from '../../adminComponentsCss/common/MetricCard.module.css';
+﻿import styles from "../../adminComponentsCss/common/MetricCard.module.css";
 
 /* ==========================================================================
  * MetricCard 컴포넌트
@@ -13,7 +13,7 @@
  * 현재는 백엔드를 구현하지 않기로 했기 때문에 실제 숫자 대신 "-"를 보여줍니다.
  * 나중에 API가 연결되면 value 같은 prop을 추가해서 숫자를 표시하면 됩니다.
  * ========================================================================== */
-export function MetricCard({ label, icon, accent = 'purple' }) {
+export function MetricCard({ label, icon, accent = "purple" }) {
   return (
     <article className={styles.metricCard}>
       <div>
@@ -21,7 +21,9 @@ export function MetricCard({ label, icon, accent = 'purple' }) {
         <strong>-</strong>
         <p>데이터 연결 전</p>
       </div>
-      <div className={`${styles.metricIcon} ${styles[accent] || ''}`}>{icon}</div>
+      <div className={`${styles.metricIcon} ${styles[accent] || ""}`}>
+        {icon}
+      </div>
     </article>
   );
 }

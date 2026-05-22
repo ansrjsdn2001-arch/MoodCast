@@ -1,6 +1,6 @@
-import { statusMeta } from './reportConstants';
-import { getTypeIcon } from './reportUtils';
-import styles from '../../adminComponentsCss/reportManagement/ReportManagementPage.module.css';
+import { statusMeta } from "./reportConstants";
+import { getTypeIcon } from "./reportUtils";
+import styles from "../../adminComponentsCss/reportManagement/ReportManagementPage.module.css";
 
 /* ==========================================================================
  * 신고 목록 항목 컴포넌트
@@ -9,12 +9,12 @@ import styles from '../../adminComponentsCss/reportManagement/ReportManagementPa
  * ========================================================================== */
 export function ReportListItem({ report, onOpen }) {
   const Icon = getTypeIcon(report.type); // 신고 유형에 맞는 썸네일 아이콘입니다.
-  const isResolved = report.status === '처리 완료'; // 제재 조치가 완료된 신고인지 판단합니다.
-  const isRejected = report.status === '반려'; // 반려 처리된 신고인지 판단합니다.
+  const isResolved = report.status === "처리 완료"; // 제재 조치가 완료된 신고인지 판단합니다.
+  const isRejected = report.status === "반려"; // 반려 처리된 신고인지 판단합니다.
 
   return (
     <article className={styles.reportItem}>
-      <div className={styles.reportThumb + ' ' + styles['type' + report.type]}>
+      <div className={styles.reportThumb + " " + styles["type" + report.type]}>
         <Icon />
         <span>{report.type}</span>
       </div>
@@ -31,18 +31,25 @@ export function ReportListItem({ report, onOpen }) {
         <p className={styles.ellipsis}>{report.detail}</p>
       </div>
       <div className={styles.reportMeta}>
-        <span className={styles.statusBadge + ' ' + styles[statusMeta[report.status]?.className || 'rejected']}>{report.status}</span>
+        <span
+          className={
+            styles.statusBadge +
+            " " +
+            styles[statusMeta[report.status]?.className || "rejected"]
+          }
+        >
+          {report.status}
+        </span>
         <strong>
-          신고 수
-          <b>{report.reportCount}건</b>
+          신고 수<b>{report.reportCount}건</b>
         </strong>
       </div>
       <div className={styles.reportAction}>
         <strong>#{report.id}</strong>
         <button type="button" onClick={() => onOpen(report)}>
-          {isResolved && '처리 완료'}
-          {isRejected && '반려'}
-          {!isResolved && !isRejected && '검토하기'}
+          {isResolved && "처리 완료"}
+          {isRejected && "반려"}
+          {!isResolved && !isRejected && "검토하기"}
         </button>
       </div>
     </article>

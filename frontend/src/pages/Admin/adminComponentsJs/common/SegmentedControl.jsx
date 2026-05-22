@@ -1,4 +1,4 @@
-﻿import styles from '../../adminComponentsCss/common/SegmentedControl.module.css';
+﻿import styles from "../../adminComponentsCss/common/SegmentedControl.module.css";
 
 /* ==========================================================================
  * SegmentedControl 컴포넌트
@@ -25,7 +25,12 @@ export function SegmentedControl({ labels, selectedLabel, onSelect }) {
         <button
           key={label}
           type="button"
-          className={(selectedLabel ?? labels[0]) === label || (!selectedLabel && index === 0) ? styles.selected : ''}
+          className={
+            (selectedLabel ?? labels[0]) === label ||
+            (!selectedLabel && index === 0)
+              ? styles.selected
+              : ""
+          }
           onClick={() => onSelect?.(label)}
         >
           {label}

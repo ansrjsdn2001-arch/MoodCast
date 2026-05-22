@@ -1,10 +1,10 @@
-﻿import { NavLink } from 'react-router-dom';
-import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
-import HelpOutlineOutlinedIcon from '@mui/icons-material/HelpOutlineOutlined';
-import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined';
-import { Logo } from '../../../../components/common/Logo';
-import { adminNavItems } from './adminConfig';
-import styles from '../../adminComponentsCss/common/AdminLayout.module.css';
+﻿import { NavLink } from "react-router-dom";
+import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
+import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
+import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
+import { Logo } from "../../../../components/common/Logo";
+import { adminNavItems } from "./adminConfig";
+import styles from "../../adminComponentsCss/common/AdminLayout.module.css";
 
 /* ==========================================================================
  * AdminLayout 컴포넌트
@@ -43,7 +43,13 @@ export function AdminLayout({ children, title, description }) {
 
         <nav className={styles.nav} aria-label="관리자 메뉴">
           {adminNavItems.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                `${styles.navItem} ${isActive ? styles.active : ""}`
+              }
+            >
               <Icon className={styles.navIcon} />
               <span>{label}</span>
             </NavLink>
@@ -72,7 +78,11 @@ export function AdminLayout({ children, title, description }) {
             <button type="button" aria-label="도움말">
               <HelpOutlineOutlinedIcon />
             </button>
-            <NavLink className={styles.headerIconLink} to="/admin/profile" aria-label="관리자 프로필">
+            <NavLink
+              className={styles.headerIconLink}
+              to="/admin/profile"
+              aria-label="관리자 프로필"
+            >
               <AccountCircleOutlinedIcon />
             </NavLink>
           </div>

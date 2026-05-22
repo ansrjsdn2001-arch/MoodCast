@@ -1,5 +1,5 @@
-import { statusMeta } from './reportConstants';
-import styles from '../../adminComponentsCss/reportManagement/ReportManagementPage.module.css';
+import { statusMeta } from "./reportConstants";
+import styles from "../../adminComponentsCss/reportManagement/ReportManagementPage.module.css";
 
 /* ==========================================================================
  * 신고 처리 상태 탭 컴포넌트
@@ -10,9 +10,22 @@ export function ReportStatusTabs({ tabs, selectedTab, counts, onSelect }) {
   return (
     <div className={styles.statusTabs} aria-label="신고 처리 상태 필터">
       {tabs.map((label) => (
-        <button key={label} className={selectedTab === label ? styles.activeStatusTab : ''} type="button" onClick={() => onSelect(label)}>
+        <button
+          key={label}
+          className={selectedTab === label ? styles.activeStatusTab : ""}
+          type="button"
+          onClick={() => onSelect(label)}
+        >
           <span>{label}</span>
-          <strong className={label === '전체' ? styles.totalCount : styles[statusMeta[label].className]}>{counts[label]}</strong>
+          <strong
+            className={
+              label === "전체"
+                ? styles.totalCount
+                : styles[statusMeta[label].className]
+            }
+          >
+            {counts[label]}
+          </strong>
         </button>
       ))}
     </div>

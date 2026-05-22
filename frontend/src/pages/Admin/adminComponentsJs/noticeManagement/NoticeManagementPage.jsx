@@ -1,35 +1,35 @@
-﻿import { useMemo, useState } from 'react';
-import { AdminLayout } from '../common/AdminLayout';
-import { EmptyState } from '../common/EmptyState';
-import { SegmentedControl } from '../common/SegmentedControl';
-import styles from '../../adminComponentsCss/noticeManagement/NoticeManagementPage.module.css';
+﻿import { useMemo, useState } from "react";
+import { AdminLayout } from "../common/AdminLayout";
+import { EmptyState } from "../common/EmptyState";
+import { SegmentedControl } from "../common/SegmentedControl";
+import styles from "../../adminComponentsCss/noticeManagement/NoticeManagementPage.module.css";
 
-const noticeCategories = ['전체', '일반', '업데이트', '긴급', '삭제 공지'];
-const writableCategories = ['일반', '업데이트', '긴급'];
+const noticeCategories = ["전체", "일반", "업데이트", "긴급", "삭제 공지"];
+const writableCategories = ["일반", "업데이트", "긴급"];
 
 const initialNoticeForm = {
-  title: '',
-  category: '일반',
-  content: '',
+  title: "",
+  category: "일반",
+  content: "",
 };
 
 const initialNotices = [
   {
     id: 1,
-    title: '서비스 이용 안내',
-    category: '일반',
-    content: 'MoodCast 서비스 이용과 관련된 기본 안내 공지입니다.',
-    createdAt: '2026. 05. 21.',
-    adminName: '관리자',
+    title: "서비스 이용 안내",
+    category: "일반",
+    content: "MoodCast 서비스 이용과 관련된 기본 안내 공지입니다.",
+    createdAt: "2026. 05. 21.",
+    adminName: "관리자",
     deletedAt: null,
   },
   {
     id: 2,
-    title: '긴급 점검 안내',
-    category: '긴급',
-    content: '서비스 안정화를 위한 긴급 점검이 진행될 예정입니다.',
-    createdAt: '2026. 05. 21.',
-    adminName: '관리자',
+    title: "긴급 점검 안내",
+    category: "긴급",
+    content: "서비스 안정화를 위한 긴급 점검이 진행될 예정입니다.",
+    createdAt: "2026. 05. 21.",
+    adminName: "관리자",
     deletedAt: null,
   },
 ];
@@ -56,7 +56,7 @@ const initialNotices = [
  * - 공지사항 전문 팝업: 제목 버튼을 누르면 공지사항 전체 내용이 모달로 열립니다.
  * ========================================================================== */
 export function NoticeManagementPage() {
-  const [selectedCategory, setSelectedCategory] = useState('전체');
+  const [selectedCategory, setSelectedCategory] = useState("전체");
   const [noticeForm, setNoticeForm] = useState(initialNoticeForm);
   const [notices, setNotices] = useState(initialNotices);
   const [editingNoticeId, setEditingNoticeId] = useState(null);
@@ -64,21 +64,23 @@ export function NoticeManagementPage() {
 
   // 공지사항 필터 ----------------------------------
   const filteredNotices = useMemo(() => {
-    if (selectedCategory === '삭제 공지') {
+    if (selectedCategory === "삭제 공지") {
       return notices.filter((notice) => notice.deletedAt);
     }
 
     const activeNotices = notices.filter((notice) => !notice.deletedAt);
 
-    if (selectedCategory === '전체') {
+    if (selectedCategory === "전체") {
       return activeNotices;
     }
 
-    return activeNotices.filter((notice) => notice.category === selectedCategory);
+    return activeNotices.filter(
+      (notice) => notice.category === selectedCategory,
+    );
   }, [notices, selectedCategory]);
 
   const isEditing = editingNoticeId !== null;
-  const isDeletedNoticeTab = selectedCategory === '삭제 공지';
+  const isDeletedNoticeTab = selectedCategory === "삭제 공지";
 
   // 공지사항 입력값 변경 ----------------------------------
   const handleFormChange = (event) => {
@@ -118,8 +120,8 @@ export function NoticeManagementPage() {
                 category: noticeForm.category,
                 content: trimmedContent,
               }
-            : notice
-        )
+            : notice,
+        ),
       );
       resetForm();
       return;
@@ -130,8 +132,8 @@ export function NoticeManagementPage() {
       title: trimmedTitle,
       category: noticeForm.category,
       content: trimmedContent,
-      createdAt: new Date().toLocaleDateString('ko-KR'),
-      adminName: '관리자',
+      createdAt: new Date().toLocaleDateString("ko-KR"),
+      adminName: "관리자",
       deletedAt: null,
     };
 
@@ -155,7 +157,7 @@ export function NoticeManagementPage() {
 
   // 공지사항 소프트 삭제 ----------------------------------
   const handleDeleteNotice = (noticeId) => {
-    const deletedDate = new Date().toLocaleDateString('ko-KR');
+    const deletedDate = new Date().toLocaleDateString("ko-KR");
 
     setNotices((prevNotices) =>
       prevNotices.map((notice) =>
@@ -164,8 +166,8 @@ export function NoticeManagementPage() {
               ...notice,
               deletedAt: deletedDate,
             }
-          : notice
-      )
+          : notice,
+      ),
     );
 
     if (editingNoticeId === noticeId) {
@@ -186,14 +188,16 @@ export function NoticeManagementPage() {
               ...notice,
               deletedAt: null,
             }
-          : notice
-      )
+          : notice,
+      ),
     );
   };
 
   // 공지사항 완전 삭제 ----------------------------------
   const handlePermanentDeleteNotice = (noticeId) => {
-    setNotices((prevNotices) => prevNotices.filter((notice) => notice.id !== noticeId));
+    setNotices((prevNotices) =>
+      prevNotices.filter((notice) => notice.id !== noticeId),
+    );
 
     if (openedNotice?.id === noticeId) {
       setOpenedNotice(null);
@@ -201,12 +205,19 @@ export function NoticeManagementPage() {
   };
 
   return (
-    <AdminLayout title="공지사항 관리" description="공지사항을 작성, 수정, 삭제하고 목록을 관리하세요.">
+    <AdminLayout
+      title="공지사항 관리"
+      description="공지사항을 작성, 수정, 삭제하고 목록을 관리하세요."
+    >
       {/* 공지사항 작성 ---------------------------------- */}
       <section className={styles.panel}>
         <div className={styles.panelHead}>
-          <h2>{isEditing ? '공지사항 수정' : '공지사항 작성'}</h2>
-          <span>{isEditing ? '선택한 공지사항을 수정 중입니다.' : '새 공지사항을 작성합니다.'}</span>
+          <h2>{isEditing ? "공지사항 수정" : "공지사항 작성"}</h2>
+          <span>
+            {isEditing
+              ? "선택한 공지사항을 수정 중입니다."
+              : "새 공지사항을 작성합니다."}
+          </span>
         </div>
 
         <form className={styles.noticeForm} onSubmit={handleSubmitNotice}>
@@ -223,7 +234,11 @@ export function NoticeManagementPage() {
 
           <label>
             공지사항 분류
-            <select name="category" value={noticeForm.category} onChange={handleFormChange}>
+            <select
+              name="category"
+              value={noticeForm.category}
+              onChange={handleFormChange}
+            >
               {writableCategories.map((category) => (
                 <option key={category} value={category}>
                   {category}
@@ -244,9 +259,11 @@ export function NoticeManagementPage() {
 
           <div className={styles.formActions}>
             <button type="button" onClick={resetForm}>
-              {isEditing ? '수정 취소' : '초기화'}
+              {isEditing ? "수정 취소" : "초기화"}
             </button>
-            <button type="submit">{isEditing ? '공지사항 수정' : '공지사항 작성'}</button>
+            <button type="submit">
+              {isEditing ? "공지사항 수정" : "공지사항 작성"}
+            </button>
           </div>
         </form>
       </section>
@@ -263,16 +280,18 @@ export function NoticeManagementPage() {
       {/* 공지사항 목록 ---------------------------------- */}
       <section className={styles.panel}>
         <div className={styles.panelHead}>
-          <h2>{isDeletedNoticeTab ? '삭제 공지 목록' : '공지사항 목록'}</h2>
+          <h2>{isDeletedNoticeTab ? "삭제 공지 목록" : "공지사항 목록"}</h2>
           <span>
             {isDeletedNoticeTab
-              ? '소프트 삭제된 공지는 이 탭에서만 완전 삭제할 수 있습니다.'
-              : '삭제하지 않은 공지사항은 목록 테이블에 계속 보관됩니다.'}
+              ? "소프트 삭제된 공지는 이 탭에서만 완전 삭제할 수 있습니다."
+              : "삭제하지 않은 공지사항은 목록 테이블에 계속 보관됩니다."}
           </span>
         </div>
 
         <div className={styles.tableWrap}>
-          <table className={`${styles.noticeTable} ${isDeletedNoticeTab ? styles.deletedNoticeTable : ''}`}>
+          <table
+            className={`${styles.noticeTable} ${isDeletedNoticeTab ? styles.deletedNoticeTable : ""}`}
+          >
             <thead>
               <tr>
                 <th>분류</th>
@@ -288,7 +307,9 @@ export function NoticeManagementPage() {
                 filteredNotices.map((notice) => (
                   <tr key={notice.id}>
                     <td>
-                      <span className={`${styles.categoryBadge} ${styles[`category${notice.category}`]}`}>
+                      <span
+                        className={`${styles.categoryBadge} ${styles[`category${notice.category}`]}`}
+                      >
                         {notice.category}
                       </span>
                     </td>
@@ -309,21 +330,35 @@ export function NoticeManagementPage() {
                         {isDeletedNoticeTab ? (
                           <>
                             {/* 공지사항 복구 ---------------------------------- */}
-                            <button type="button" onClick={() => handleRestoreNotice(notice.id)}>
+                            <button
+                              type="button"
+                              onClick={() => handleRestoreNotice(notice.id)}
+                            >
                               복구
                             </button>
-                            <button type="button" onClick={() => handlePermanentDeleteNotice(notice.id)}>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handlePermanentDeleteNotice(notice.id)
+                              }
+                            >
                               완전 삭제
                             </button>
                           </>
                         ) : (
                           <>
                             {/* 공지사항 수정 ---------------------------------- */}
-                            <button type="button" onClick={() => handleEditNotice(notice)}>
+                            <button
+                              type="button"
+                              onClick={() => handleEditNotice(notice)}
+                            >
                               수정
                             </button>
                             {/* 공지사항 소프트 삭제 ---------------------------------- */}
-                            <button type="button" onClick={() => handleDeleteNotice(notice.id)}>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteNotice(notice.id)}
+                            >
                               삭제
                             </button>
                           </>
@@ -336,11 +371,13 @@ export function NoticeManagementPage() {
                 <tr>
                   <td colSpan={isDeletedNoticeTab ? 6 : 5}>
                     <EmptyState
-                      title={isDeletedNoticeTab ? '삭제 공지 없음' : '공지사항 없음'}
+                      title={
+                        isDeletedNoticeTab ? "삭제 공지 없음" : "공지사항 없음"
+                      }
                       description={
                         isDeletedNoticeTab
-                          ? '소프트 삭제 상태의 공지사항이 없습니다.'
-                          : '작성된 공지사항이 없거나 선택한 필터에 해당하는 공지사항이 없습니다.'
+                          ? "소프트 삭제 상태의 공지사항이 없습니다."
+                          : "작성된 공지사항이 없거나 선택한 필터에 해당하는 공지사항이 없습니다."
                       }
                     />
                   </td>
@@ -353,7 +390,11 @@ export function NoticeManagementPage() {
 
       {/* 공지사항 전문 팝업 ---------------------------------- */}
       {openedNotice ? (
-        <div className={styles.modalBackdrop} role="presentation" onClick={() => setOpenedNotice(null)}>
+        <div
+          className={styles.modalBackdrop}
+          role="presentation"
+          onClick={() => setOpenedNotice(null)}
+        >
           <section
             className={styles.noticeModal}
             role="dialog"
@@ -363,7 +404,9 @@ export function NoticeManagementPage() {
           >
             <div className={styles.modalHead}>
               <div>
-                <span className={`${styles.categoryBadge} ${styles[`category${openedNotice.category}`]}`}>
+                <span
+                  className={`${styles.categoryBadge} ${styles[`category${openedNotice.category}`]}`}
+                >
                   {openedNotice.category}
                 </span>
                 <h2 id="notice-modal-title">{openedNotice.title}</h2>

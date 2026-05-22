@@ -1,7 +1,7 @@
-import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
-import { reasonOptions, suspensionPeriods } from './reportConstants';
-import { DrawerHeader } from './ReportDrawerHeader';
-import styles from '../../adminComponentsCss/reportManagement/ReportManagementPage.module.css';
+import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
+import { reasonOptions, suspensionPeriods } from "./reportConstants";
+import { DrawerHeader } from "./ReportDrawerHeader";
+import styles from "../../adminComponentsCss/reportManagement/ReportManagementPage.module.css";
 
 export function ReportTemporaryStep({
   report,
@@ -20,7 +20,11 @@ export function ReportTemporaryStep({
 }) {
   return (
     <>
-      <DrawerHeader title="일시 정지 옵션 설정" onBack={onBack} onClose={onClose} />
+      <DrawerHeader
+        title="일시 정지 옵션 설정"
+        onBack={onBack}
+        onClose={onClose}
+      />
 
       <div className={styles.drawerBody}>
         <section className={styles.noticeBox}>
@@ -52,7 +56,11 @@ export function ReportTemporaryStep({
         {/* 일시 정지 사유 입력 ---------------------------------- */}
         <section className={styles.formSection}>
           <label htmlFor="temporary-reason">제재 사유 *</label>
-          <select id="temporary-reason" value={selectedReason} onChange={(event) => onChangeReason(event.target.value)}>
+          <select
+            id="temporary-reason"
+            value={selectedReason}
+            onChange={(event) => onChangeReason(event.target.value)}
+          >
             {reasonOptions.map((reason) => (
               <option key={reason}>{reason}</option>
             ))}
@@ -75,15 +83,25 @@ export function ReportTemporaryStep({
         <section className={styles.periodSection}>
           <h3>일시 정지 기간 선택</h3>
           {suspensionPeriods.map((period) => (
-            <label key={period.label} className={selectedPeriod === period.value ? styles.selectedPeriod : ''}>
-              <input type="radio" name="period" checked={selectedPeriod === period.value} onChange={() => onChangePeriod(period.value)} />
+            <label
+              key={period.label}
+              className={
+                selectedPeriod === period.value ? styles.selectedPeriod : ""
+              }
+            >
+              <input
+                type="radio"
+                name="period"
+                checked={selectedPeriod === period.value}
+                onChange={() => onChangePeriod(period.value)}
+              />
               <span>
                 <strong>{period.label}</strong>
                 <small>{period.description}</small>
               </span>
             </label>
           ))}
-          {selectedPeriod === 'custom' && (
+          {selectedPeriod === "custom" && (
             <input
               className={styles.customPeriodInput}
               type="text"
@@ -91,7 +109,9 @@ export function ReportTemporaryStep({
               pattern="[0-9]*"
               placeholder="기간 입력"
               value={customPeriod}
-              onChange={(event) => onChangeCustomPeriod(event.target.value.replace(/[^0-9]/g, ''))}
+              onChange={(event) =>
+                onChangeCustomPeriod(event.target.value.replace(/[^0-9]/g, ""))
+              }
             />
           )}
         </section>
@@ -105,7 +125,11 @@ export function ReportTemporaryStep({
       </div>
 
       <footer className={styles.drawerFooter}>
-        <button className={styles.secondaryButton} type="button" onClick={onBack}>
+        <button
+          className={styles.secondaryButton}
+          type="button"
+          onClick={onBack}
+        >
           취소
         </button>
         <button className={styles.primaryButton} type="button" onClick={onNext}>

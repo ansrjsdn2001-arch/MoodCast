@@ -1,9 +1,9 @@
-﻿import { useState } from 'react';
-import { NavLink } from 'react-router-dom';
-import { AdminLayout } from '../common/AdminLayout';
-import { EmptyState } from '../common/EmptyState';
-import { EmptyTableRow, TableShell } from '../common/TableShell';
-import styles from '../../adminComponentsCss/userManagement/AdminCreatePage.module.css';
+﻿import { useState } from "react";
+import { NavLink } from "react-router-dom";
+import { AdminLayout } from "../common/AdminLayout";
+import { EmptyState } from "../common/EmptyState";
+import { EmptyTableRow, TableShell } from "../common/TableShell";
+import styles from "../../adminComponentsCss/userManagement/AdminCreatePage.module.css";
 
 /* ==========================================================================
  * 관리자 추가 페이지
@@ -25,12 +25,12 @@ import styles from '../../adminComponentsCss/userManagement/AdminCreatePage.modu
  * - 추후 백엔드가 연결되면 이메일/이름 값을 API로 보내고, 응답받은 회원 목록을 테이블에 표시하면 됩니다.
  * ========================================================================== */
 export function AdminCreatePage() {
-  const [selectedRole, setSelectedRole] = useState('NORMAL_ADMIN');
+  const [selectedRole, setSelectedRole] = useState("NORMAL_ADMIN");
 
   const roleDescription =
-    selectedRole === 'SUPER_ADMIN'
-      ? '슈퍼 관리자는 관리자 추가, 관리자 삭제 기능까지 사용할 수 있습니다.'
-      : '일반 관리자는 관리자 추가와 삭제를 제외한 관리자 기능을 사용할 수 있습니다.';
+    selectedRole === "SUPER_ADMIN"
+      ? "슈퍼 관리자는 관리자 추가, 관리자 삭제 기능까지 사용할 수 있습니다."
+      : "일반 관리자는 관리자 추가와 삭제를 제외한 관리자 기능을 사용할 수 있습니다.";
 
   return (
     <AdminLayout
@@ -67,7 +67,7 @@ export function AdminCreatePage() {
 
       <TableShell
         title="승급 대상 선택"
-        columns={['회원', '이메일', '현재 권한', '가입일', '선택']}
+        columns={["회원", "이메일", "현재 권한", "가입일", "선택"]}
       >
         <EmptyTableRow colSpan={5} label="검색된 회원 데이터 없음" />
       </TableShell>
@@ -84,8 +84,8 @@ export function AdminCreatePage() {
               <input
                 type="radio"
                 name="adminRole"
-                checked={selectedRole === 'NORMAL_ADMIN'}
-                onChange={() => setSelectedRole('NORMAL_ADMIN')}
+                checked={selectedRole === "NORMAL_ADMIN"}
+                onChange={() => setSelectedRole("NORMAL_ADMIN")}
               />
               일반 관리자
             </label>
@@ -93,8 +93,8 @@ export function AdminCreatePage() {
               <input
                 type="radio"
                 name="adminRole"
-                checked={selectedRole === 'SUPER_ADMIN'}
-                onChange={() => setSelectedRole('SUPER_ADMIN')}
+                checked={selectedRole === "SUPER_ADMIN"}
+                onChange={() => setSelectedRole("SUPER_ADMIN")}
               />
               슈퍼 관리자
             </label>
@@ -102,9 +102,9 @@ export function AdminCreatePage() {
 
           <div className={styles.roleGuide}>
             <strong>
-              {selectedRole === 'SUPER_ADMIN'
-                ? '슈퍼 관리자 권한'
-                : '일반 관리자 권한'}
+              {selectedRole === "SUPER_ADMIN"
+                ? "슈퍼 관리자 권한"
+                : "일반 관리자 권한"}
             </strong>
             <p>{roleDescription}</p>
           </div>

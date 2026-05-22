@@ -1,5 +1,5 @@
-﻿import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
-import styles from '../../adminComponentsCss/common/SearchBar.module.css';
+﻿import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
+import styles from "../../adminComponentsCss/common/SearchBar.module.css";
 
 /* ==========================================================================
  * SearchBar 컴포넌트
@@ -11,7 +11,7 @@ import styles from '../../adminComponentsCss/common/SearchBar.module.css';
  * 나중에 검색 기능을 붙일 때는 input의 value와 onChange를 props로 받아서
  * 부모 페이지에서 검색어 상태를 관리하게 만들면 됩니다.
  * ========================================================================== */
-export function SearchBar({ placeholder = '검색어를 입력하세요' }) {
+export function SearchBar({ placeholder = "검색어를 입력하세요" }) {
   return (
     <label className={styles.searchBar}>
       <SearchOutlinedIcon />

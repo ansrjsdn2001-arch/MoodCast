@@ -1,5 +1,5 @@
-import { typeMeta } from './reportConstants';
-import styles from '../../adminComponentsCss/reportManagement/ReportManagementPage.module.css';
+import { typeMeta } from "./reportConstants";
+import styles from "../../adminComponentsCss/reportManagement/ReportManagementPage.module.css";
 
 /* ==========================================================================
  * 신고 대상 유형 탭 컴포넌트
@@ -12,7 +12,12 @@ export function ReportTypeTabs({ tabs, selectedTab, counts, onSelect }) {
       {tabs.map((label) => {
         const Icon = typeMeta[label].icon;
         return (
-          <button key={label} className={selectedTab === label ? styles.activeTypeTab : ''} type="button" onClick={() => onSelect(label)}>
+          <button
+            key={label}
+            className={selectedTab === label ? styles.activeTypeTab : ""}
+            type="button"
+            onClick={() => onSelect(label)}
+          >
             <Icon />
             <span>{label}</span>
             <strong>{counts[label]}</strong>

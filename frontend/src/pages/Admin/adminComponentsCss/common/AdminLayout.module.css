@@ -68,7 +68,10 @@
   font-size: 0.88rem;
   font-weight: 800;
   text-decoration: none;
-  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
 }
 
 .navItem:hover,
@@ -94,7 +97,10 @@
   color: #111827;
   text-decoration: none;
   background: rgba(251, 251, 253, 0.92);
-  transition: transform 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+  transition:
+    transform 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease;
 }
 
 .adminProfile:hover {
@@ -164,7 +170,11 @@
   background: rgba(255, 255, 255, 0.84);
   box-shadow: 0 12px 30px rgba(17, 24, 39, 0.06);
   cursor: pointer;
-  transition: transform 0.16s ease, background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+  transition:
+    transform 0.16s ease,
+    background 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease;
 }
 
 .headerActions button:hover,

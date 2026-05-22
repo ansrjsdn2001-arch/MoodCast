@@ -50,7 +50,10 @@
   border-radius: 12px;
   font-weight: 900;
   cursor: pointer;
-  transition: transform 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+  transition:
+    transform 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease;
 }
 
 .statusPills button {
@@ -170,7 +173,11 @@
   border-radius: 50%;
   color: #633df2;
   font-weight: 900;
-  background: linear-gradient(135deg, rgba(124, 77, 255, 0.14), rgba(21, 112, 239, 0.1));
+  background: linear-gradient(
+    135deg,
+    rgba(124, 77, 255, 0.14),
+    rgba(21, 112, 239, 0.1)
+  );
 }
 
 .authorRow strong {
@@ -380,7 +387,10 @@
   border: 1px solid rgba(47, 111, 237, 0.35);
   border-radius: 4px;
   background: #fff;
-  transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
 }
 
 .checkVisual::after {

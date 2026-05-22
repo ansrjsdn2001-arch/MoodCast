@@ -1,8 +1,8 @@
-import ErrorOutlineOutlinedIcon from '@mui/icons-material/ErrorOutlineOutlined';
-import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
-import { todayText } from './reportConstants';
-import { DrawerHeader } from './ReportDrawerHeader';
-import styles from '../../adminComponentsCss/reportManagement/ReportManagementPage.module.css';
+import ErrorOutlineOutlinedIcon from "@mui/icons-material/ErrorOutlineOutlined";
+import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
+import { todayText } from "./reportConstants";
+import { DrawerHeader } from "./ReportDrawerHeader";
+import styles from "../../adminComponentsCss/reportManagement/ReportManagementPage.module.css";
 
 export function ReportConfirmStep({
   report,
@@ -16,16 +16,21 @@ export function ReportConfirmStep({
   onClose,
   onConfirm,
 }) {
-  const periodLabel = selectedPeriod === 'custom' ? `${customPeriod || 0}일` : `${selectedPeriod}일`; // 최종 확인 화면에 보여줄 정지 기간입니다.
-  const isTemporary = actionMeta?.id === 'temporary'; // 일시 정지인지 판단합니다.
-  const isReject = actionMeta?.id === 'reject'; // 반려인지 판단합니다.
+  const periodLabel =
+    selectedPeriod === "custom"
+      ? `${customPeriod || 0}일`
+      : `${selectedPeriod}일`; // 최종 확인 화면에 보여줄 정지 기간입니다.
+  const isTemporary = actionMeta?.id === "temporary"; // 일시 정지인지 판단합니다.
+  const isReject = actionMeta?.id === "reject"; // 반려인지 판단합니다.
 
   return (
     <>
       <DrawerHeader title="제재 내용 확인" onBack={onBack} onClose={onClose} />
 
       <div className={styles.drawerBody}>
-        <p className={styles.guideText}>아래 내용을 확인하고 제재를 최종 확정해주세요.</p>
+        <p className={styles.guideText}>
+          아래 내용을 확인하고 제재를 최종 확정해주세요.
+        </p>
 
         {/* 신고 대상 확인 ---------------------------------- */}
         <section className={styles.confirmTarget}>
@@ -53,12 +58,16 @@ export function ReportConfirmStep({
           <h3>제재 사유</h3>
           <dl>
             <div>
-              <dt>{isReject ? '처리 유형' : '제재 사유'}</dt>
-              <dd>{isReject ? '반려' : selectedReason}</dd>
+              <dt>{isReject ? "처리 유형" : "제재 사유"}</dt>
+              <dd>{isReject ? "반려" : selectedReason}</dd>
             </div>
             <div>
               <dt>상세 설명</dt>
-              <dd>{isReject ? '신고가 부적절하다고 판단되어 반려합니다.' : reasonDetail || report.detail}</dd>
+              <dd>
+                {isReject
+                  ? "신고가 부적절하다고 판단되어 반려합니다."
+                  : reasonDetail || report.detail}
+              </dd>
             </div>
           </dl>
         </section>
@@ -68,7 +77,7 @@ export function ReportConfirmStep({
           <h3>제재 내용</h3>
           <dl>
             <div>
-              <dt>{isReject ? '처리 유형' : '제재 유형'}</dt>
+              <dt>{isReject ? "처리 유형" : "제재 유형"}</dt>
               <dd>{actionMeta?.label}</dd>
             </div>
             {isTemporary && (
@@ -95,9 +104,12 @@ export function ReportConfirmStep({
               <div>
                 <dt>처리 내용</dt>
                 <dd>
-                  {actionMeta?.id === 'warning' && '사용자에게 경고 메시지를 발송합니다.'}
-                  {actionMeta?.id === 'permanent' && '해당 사용자의 계정을 영구 정지합니다.'}
-                  {actionMeta?.id === 'reject' && '신고가 부적절하다고 판단되어 반려합니다.'}
+                  {actionMeta?.id === "warning" &&
+                    "사용자에게 경고 메시지를 발송합니다."}
+                  {actionMeta?.id === "permanent" &&
+                    "해당 사용자의 계정을 영구 정지합니다."}
+                  {actionMeta?.id === "reject" &&
+                    "신고가 부적절하다고 판단되어 반려합니다."}
                 </dd>
               </div>
             )}
@@ -130,10 +142,18 @@ export function ReportConfirmStep({
       </div>
 
       <footer className={styles.drawerFooter}>
-        <button className={styles.secondaryButton} type="button" onClick={onBack}>
+        <button
+          className={styles.secondaryButton}
+          type="button"
+          onClick={onBack}
+        >
           취소
         </button>
-        <button className={styles.primaryButton} type="button" onClick={onConfirm}>
+        <button
+          className={styles.primaryButton}
+          type="button"
+          onClick={onConfirm}
+        >
           제재 확정
         </button>
       </footer>

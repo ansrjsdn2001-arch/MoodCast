@@ -1,6 +1,6 @@
-import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
-import { DrawerHeader } from './ReportDrawerHeader';
-import styles from '../../adminComponentsCss/reportManagement/ReportManagementPage.module.css';
+import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
+import { DrawerHeader } from "./ReportDrawerHeader";
+import styles from "../../adminComponentsCss/reportManagement/ReportManagementPage.module.css";
 
 export function ReportDetailStep({ report, onClose, onProcess }) {
   return (
@@ -112,7 +112,11 @@ export function ReportDetailStep({ report, onClose, onProcess }) {
         <button className={styles.secondaryButton} type="button">
           전체 활동 보기
         </button>
-        <button className={styles.primaryButton} type="button" onClick={onProcess}>
+        <button
+          className={styles.primaryButton}
+          type="button"
+          onClick={onProcess}
+        >
           신고 검토 및 처리
         </button>
       </footer>
