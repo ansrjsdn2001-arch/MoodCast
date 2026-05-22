@@ -59,10 +59,18 @@ export function TopUtilityIcons({ onSearch }) {
       </button>
       {menuOpen ? (
         <div className={styles.menu}>
-          <button type="button" onClick={() => navigate('/app/profile')}>
-            <AccountCircleOutlinedIcon />
-            프로필 보기
-          </button>
+          {isLoggedIn ? (
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                navigate('/app/profile');
+              }}
+            >
+              <AccountCircleOutlinedIcon />
+              프로필 보기
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => {
@@ -70,6 +78,7 @@ export function TopUtilityIcons({ onSearch }) {
                 logout();
                 return;
               }
+              setMenuOpen(false);
               navigate('/auth/login');
             }}
           >

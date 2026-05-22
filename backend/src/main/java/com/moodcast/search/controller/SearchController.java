@@ -14,14 +14,14 @@ import java.util.Map;
 // 클라이언트가 /search/posts, /search/users, /search/hashtags를 호출하면
 // 각각 게시물, 사용자, 해시태그 검색 결과를 JSON으로 돌려줍니다.
 @RestController
-@RequestMapping("search")
+@RequestMapping("/search")
 public class SearchController {
     @Autowired
     private SearchService searchService;
 
     // 게시물 검색 API
     // 요청 예: GET /search/posts?q=감성
-    @GetMapping("posts")
+    @GetMapping("/posts")
     public ResponseEntity<?> searchPosts(@RequestParam(value = "q", required = false) String query) {
         return ResponseEntity.ok(
                 Map.of(
@@ -31,7 +31,7 @@ public class SearchController {
         );
     }
 
-    @GetMapping("users")
+    @GetMapping("/users")
     public ResponseEntity<?> searchUsers(@RequestParam(value = "q", required = false) String query) {
         return ResponseEntity.ok(
                 Map.of(
@@ -41,7 +41,7 @@ public class SearchController {
         );
     }
 
-    @GetMapping("hashtags")
+    @GetMapping("/hashtags")
     public ResponseEntity<?> searchHashtags(@RequestParam(value = "q", required = false) String query) {
         return ResponseEntity.ok(
                 Map.of(

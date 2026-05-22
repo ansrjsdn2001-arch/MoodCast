@@ -4,7 +4,7 @@ import { MobileShell } from '../../components/layout/MobileShell';
 import { useIsDesktop } from '../../hooks/useViewportWidth';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { useAuthState } from '../../hooks/useAuthState';
+import { useAuthStore } from '../../hooks/useAuthStore';
 import styles from './ProfileEditPage.module.css';
 
 const defaultProfile = {
@@ -15,10 +15,12 @@ const defaultProfile = {
 export function ProfileEditPage() {
   const desktop = useIsDesktop();
   const navigate = useNavigate();
-  const { member, accessToken, setAuthData } = useAuthState();
+  const { member, accessToken, setAuthData } = useAuthStore();
   const [profile, setProfile] = useState(defaultProfile);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [saved, setSaved] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!member) return;
@@ -48,35 +50,59 @@ export function ProfileEditPage() {
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
   const handleSave = () => {
-    if (!member || !accessToken) {
+    const newNickname = profile.nickname?.trim();
+    if (!newNickname) {
+      setErrorMessage('닉네임을 입력해주세요.');
       setSaved(false);
       return;
     }
 
+    if (!member || !accessToken) {
+      setErrorMessage('로그인이 필요합니다. 다시 로그인해주세요.');
+      setSaved(false);
+      return;
+    }
+
+    const requestBody = {
+      nickname: newNickname,
+      bio: profile.bio,
+    };
+
+    console.log('프로필 저장 요청', { requestBody, accessToken });
+
+    setLoading(true);
+    setErrorMessage('');
+
     axios
-      .put(
-        `${BACKSERVER}/auth/profile`,
-        {
-          nickname: profile.nickname,
-          bio: profile.bio,
+      .put(`${BACKSERVER}/auth/profile`, requestBody, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
         },
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-      )
+        withCredentials: true,
+      })
       .then((res) => {
         if (res.data?.member) {
           setAuthData(accessToken, res.data.member);
         }
         setSaved(true);
+        setErrorMessage('');
         window.setTimeout(() => {
           navigate('/app/profile');
         }, 800);
       })
       .catch((error) => {
         console.error('프로필 저장 실패', error);
+        const responseMessage = error.response?.data?.message;
+        const responseDetail = error.response?.data?.details;
+        setErrorMessage(
+          responseMessage
+            ? `${responseMessage}${responseDetail ? ` (${responseDetail})` : ''}`
+            : '프로필 저장에 실패했습니다. 다시 시도해주세요.'
+        );
+        setSaved(false);
+      })
+      .finally(() => {
+        setLoading(false);
       });
   };
 
@@ -126,15 +152,16 @@ export function ProfileEditPage() {
         </div>
 
         <div className={styles.buttonRow}>
-          <button type="button" className={styles.backButton} onClick={handleBack}>
+          <button type="button" className={styles.backButton} onClick={handleBack} disabled={loading}>
             취소
           </button>
-          <button type="button" className={styles.saveButton} onClick={handleSave}>
-            완료
+          <button type="button" className={styles.saveButton} onClick={handleSave} disabled={loading}>
+            {loading ? '저장 중...' : '완료'}
           </button>
         </div>
 
         {saved ? <div className={styles.message}>프로필 변경 사항이 저장되었습니다.</div> : null}
+        {errorMessage ? <div className={styles.error}>{errorMessage}</div> : null}
       </div>
     </section>
   );

@@ -37,10 +37,12 @@ public class AuthExceptionHandler {
             MissingServletRequestParameterException.class
     })
     public ResponseEntity<?> handleBadRequestException(Exception e) {
+        e.printStackTrace();
         return ResponseEntity.badRequest().body(
                 Map.of(
                         "success", false,
-                        "message", "요청값이 올바르지 않습니다."
+                        "message", "요청값이 올바르지 않습니다.",
+                        "details", e.getMessage()
                 )
         );
     }

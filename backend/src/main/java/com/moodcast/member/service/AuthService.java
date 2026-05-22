@@ -75,6 +75,7 @@ public class AuthService {
                 member.getName(),
                 member.getNickname(),
                 member.getProfileImageUrl(),
+                member.getBio(),
                 member.getRole()
         );
     }

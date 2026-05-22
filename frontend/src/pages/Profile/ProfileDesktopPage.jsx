@@ -3,16 +3,16 @@ import { FeedCard } from '../../components/common/FeedCard';
 import { feedPosts, profileHighlights, profileStats } from '../../data/moodcastData';
 import styles from './ProfileDesktopPage.module.css';
 import { useNavigate } from 'react-router-dom';
-import { useAuthState } from '../../hooks/useAuthState';
+import { useAuthStore } from '../../hooks/useAuthStore';
 
 export function ProfileDesktopPage() {
   const navigate = useNavigate();
-  const { member } = useAuthState();
+  const { member } = useAuthStore();
 
   const displayName = member?.nickname || member?.name || 'MoodCast';
   const displayInitial = displayName.charAt(0).toUpperCase();
   const displayText = member
-    ? '감성을 기록하고 커뮤니티 참여를 즐기는 MoodCast 프로필입니다.'
+    ? member.bio || '감성을 기록하고 커뮤니티 참여를 즐기는 MoodCast 프로필입니다.'
     : '로그인 후 프로필 정보를 확인할 수 있습니다.';
 
   const handleStatClick = (label) => {
