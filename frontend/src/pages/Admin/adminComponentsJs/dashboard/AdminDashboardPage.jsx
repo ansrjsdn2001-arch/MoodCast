@@ -1,5 +1,6 @@
-﻿import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
+import axios from "axios";
 import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 import GppMaybeOutlinedIcon from "@mui/icons-material/GppMaybeOutlined";
@@ -22,10 +23,16 @@ import styles from "../../adminComponentsCss/dashboard/AdminDashboardPage.module
  * - 감정별 활동 분포 필터 자리
  * - 최근 활동과 자주 확인하는 메뉴
  *
- * 현재는 백엔드를 붙이지 않았으므로 모든 데이터 영역은 EmptyState로 표시합니다.
+ * totalMemberCount 상태 설명:
+ * - members 테이블의 전체 회원 수를 저장합니다.
+ * - 사용자 관리 페이지와 같은 /admin/api/members/count API를 사용합니다.
  * ========================================================================== */
 export function AdminDashboardPage() {
   const [signupPeriod, setSignupPeriod] = useState("일");
+  const [totalMemberCount, setTotalMemberCount] = useState(null);
+  const [totalMemberCountError, setTotalMemberCountError] = useState(false);
+
+  const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
 
   const signupDescription = {
     일: "일 단위 신규 가입자 데이터가 연결되면 그래프가 표시됩니다.",
@@ -33,13 +40,44 @@ export function AdminDashboardPage() {
     월: "월 단위 신규 가입자 데이터가 연결되면 그래프가 표시됩니다.",
   };
 
+  useEffect(() => {
+    /* ========================================================================
+     * 전체 회원 수 조회
+     * ------------------------------------------------------------------------
+     * 관리자 대시보드의 "회원수" 카드에 표시할 숫자를 조회합니다.
+     *
+     * 사용자 관리 페이지에서 이미 사용하는 API와 같은 API를 사용합니다.
+     * 이렇게 하면 같은 의미의 숫자를 여러 화면에서 다르게 계산하는 문제를 줄일 수 있습니다.
+     * ======================================================================== */
+    axios
+      .get(`${BACKSERVER}/admin/api/members/count`)
+      .then((res) => {
+        const count = res.data?.totalMemberCount;
+
+        setTotalMemberCount(typeof count === "number" ? count : 0);
+        setTotalMemberCountError(false);
+      })
+      .catch((error) => {
+        console.log(error);
+        setTotalMemberCount(null);
+        setTotalMemberCountError(true);
+      });
+  }, [BACKSERVER]);
+
   return (
     <AdminLayout
       title="관리자 대시보드"
       description="서비스 운영 현황을 한눈에 확인하세요."
     >
       <section className={styles.metricGrid}>
-        <MetricCard label="회원수" icon={<GroupOutlinedIcon />} />
+        <MetricCard
+          label="회원수"
+          value={
+            totalMemberCount === null ? "-" : totalMemberCount.toLocaleString()
+          }
+          helperText={totalMemberCountError ? "조회 실패" : ""}
+          icon={<GroupOutlinedIcon />}
+        />
         <MetricCard
           label="신규 가입자"
           icon={<AddOutlinedIcon />}

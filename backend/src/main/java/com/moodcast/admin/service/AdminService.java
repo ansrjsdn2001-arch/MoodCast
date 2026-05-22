@@ -1,8 +1,11 @@
 package com.moodcast.admin.service;
 
 import com.moodcast.admin.dao.AdminDao;
+import com.moodcast.admin.vo.AdminMember;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 /* ==========================================================================
  * 관리자 페이지 공통 서비스
@@ -23,4 +26,29 @@ public class AdminService {
 
     @Autowired // 나중에 DB 조회가 필요할 때 사용할 DAO를 연결합니다.
     private AdminDao adminDao;
+
+    /* ==========================================================================
+     * 전체 회원 수 조회
+     * --------------------------------------------------------------------------
+     * 컨트롤러에서 요청을 받으면 DAO를 통해 members 테이블의 전체 회원 수를 조회합니다.
+     *
+     * 지금은 단순 조회만 하지만 Service를 거치는 이유:
+     * - 나중에 "삭제 회원 제외" 같은 정책이 생기면 이 위치에서 처리 기준을 정리할 수 있습니다.
+     * ========================================================================== */
+    public Long getTotalMemberCount() {
+        return adminDao.selectTotalMemberCount();
+    }
+
+    /* ==========================================================================
+     * 전체 회원 목록 조회
+     * --------------------------------------------------------------------------
+     * members 테이블의 회원 목록을 조회해서 사용자 관리 테이블에 전달합니다.
+     *
+     * 지금은 "전체" 탭에만 표시할 데이터이므로 별도 조건을 걸지 않습니다.
+     * 나중에 일반 회원, 정지 회원, 관리자 회원 탭을 실제로 동작시킬 때는
+     * 이 메서드에 role/status 조건을 추가하거나 별도 메서드로 분리하면 됩니다.
+     * ========================================================================== */
+    public List<AdminMember> getMembers() {
+        return adminDao.selectMembers();
+    }
 }

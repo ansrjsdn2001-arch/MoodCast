@@ -1,6 +1,9 @@
 package com.moodcast.admin.dao;
 
+import com.moodcast.admin.vo.AdminMember;
 import org.apache.ibatis.annotations.Mapper;
+
+import java.util.List;
 
 /* ==========================================================================
  * 관리자 페이지 공통 DAO
@@ -18,4 +21,10 @@ import org.apache.ibatis.annotations.Mapper;
  * ========================================================================== */
 @Mapper // MyBatis가 이 인터페이스를 DB Mapper로 인식하게 합니다.
 public interface AdminDao {
+
+    /* members 테이블에 있는 전체 회원 수를 조회합니다. */
+    Long selectTotalMemberCount();
+
+    /* members 테이블에 있는 전체 회원 목록을 조회합니다. */
+    List<AdminMember> selectMembers();
 }

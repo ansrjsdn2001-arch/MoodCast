@@ -1,9 +1,14 @@
 package com.moodcast.admin.controller;
 
 import com.moodcast.admin.service.AdminService;
+import com.moodcast.admin.vo.AdminMember;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.Map;
 
 /* ==========================================================================
  * 관리자 페이지 공통 컨트롤러
@@ -29,4 +34,39 @@ public class AdminController {
 
     @Autowired // Spring이 AdminService 객체를 자동으로 연결해줍니다.
     private AdminService adminService;
+
+    /* ==========================================================================
+     * 전체 회원 수 조회 API
+     * --------------------------------------------------------------------------
+     * 사용자 관리 페이지의 "전체 회원" 카드에 표시할 숫자를 조회합니다.
+     *
+     * 요청 주소:
+     * - GET /admin/api/members/count
+     *
+     * 응답 예시:
+     * - { "totalMemberCount": 5 }
+     * ========================================================================== */
+    @GetMapping("/members/count") // 브라우저에서 이 주소로 GET 요청이 오면 아래 메서드가 실행됩니다.
+    public Map<String, Long> getTotalMemberCount() {
+        return Map.of("totalMemberCount", adminService.getTotalMemberCount());
+    }
+
+    /* ==========================================================================
+     * 전체 회원 목록 조회 API
+     * --------------------------------------------------------------------------
+     * 사용자 관리 페이지의 "전체 목록" 테이블에 표시할 회원 목록을 조회합니다.
+     *
+     * 요청 주소:
+     * - GET /admin/api/members
+     *
+     * 현재 조회 정보:
+     * - 사용자: name
+     * - 상태: status
+     * - 가입일: created_at
+     * - 권한: role
+     * ========================================================================== */
+    @GetMapping("/members") // 브라우저에서 이 주소로 GET 요청이 오면 전체 회원 목록을 반환합니다.
+    public Map<String, List<AdminMember>> getMembers() {
+        return Map.of("members", adminService.getMembers());
+    }
 }

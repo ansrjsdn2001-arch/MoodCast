@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  관리자 페이지용 MyBatis mapper입니다.
+
+  초보자 기준 설명:
+  - AdminDao 인터페이스에 있는 메서드와 실제 SQL을 연결합니다.
+  - 아래 select id="selectTotalMemberCount"는 AdminDao.selectTotalMemberCount()와 연결됩니다.
+-->
+<mapper namespace="com.moodcast.admin.dao.AdminDao">
+
+    <!--
+      회원 목록 조회 결과를 AdminMember VO에 연결합니다.
+
+      DB 컬럼명은 member_id처럼 snake_case이고,
+      Java 필드명은 memberId처럼 camelCase라서 resultMap으로 직접 연결합니다.
+    -->
+    <resultMap id="adminMemberMap" type="com.moodcast.admin.vo.AdminMember">
+        <id property="memberId" column="member_id"/>
+        <result property="name" column="name"/>
+        <result property="email" column="email"/>
+        <result property="status" column="status"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="role" column="role"/>
+    </resultMap>
+
+    <!--
+      전체 회원 수 조회입니다.
+
+      members 테이블에 있는 모든 회원 수를 조회합니다.
+
+      지금 기준:
+      - 삭제 여부, 상태 여부를 따로 거르지 않습니다.
+      - 사용자가 직접 테스트한 SELECT COUNT(*) FROM members 기준과 동일합니다.
+    -->
+    <select id="selectTotalMemberCount" resultType="long">
+        select count(*)
+        from members
+    </select>
+
+    <!--
+      전체 회원 목록 조회입니다.
+
+      사용자 관리 페이지의 현재 선택 탭이 "전체"일 때 테이블에 출력할 데이터를 조회합니다.
+      지금은 모든 회원을 보여주는 단계이므로 deleted_at, status, role 조건을 걸지 않습니다.
+    -->
+    <select id="selectMembers" resultMap="adminMemberMap">
+        select
+            member_id,
+            name,
+            email,
+            status,
+            created_at,
+            role
+        from members
+        order by created_at desc
+    </select>
+</mapper>
