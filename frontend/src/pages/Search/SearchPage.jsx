@@ -5,6 +5,8 @@ import { MobileShell } from '../../components/layout/MobileShell';
 import { useIsDesktop } from '../../hooks/useViewportWidth';
 import styles from './SearchPage.module.css';
 
+// SearchPage는 검색 페이지 화면 전체를 담당합니다.
+// 입력한 검색어를 백엔드 검색 API로 전달하고 결과를 보여줍니다.
 export function SearchPage() {
   const desktop = useIsDesktop();
   const [query, setQuery] = useState('');
@@ -14,6 +16,7 @@ export function SearchPage() {
   const [error, setError] = useState(null);
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
+  // 검색어 또는 탭이 바뀌면 백엔드에 검색 요청을 다시 보냅니다.
   useEffect(() => {
     const normalized = query.trim();
     if (normalized === '') {

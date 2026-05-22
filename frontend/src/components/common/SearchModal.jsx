@@ -5,12 +5,18 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './SearchModal.module.css';
 
+// SearchModal은 화면에 떠서 사용자가 검색어를 입력하면
+// 게시글/사용자/해시태그 검색 결과를 보여주는 UI 컴포넌트입니다.
+// 검색 요청은 실제로 백엔드 서버의 검색 API를 호출합니다.
 export function SearchModal({ open, onClose }) {
   const [query, setQuery] = useState('');
   const [activeTab, setActiveTab] = useState('posts');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  // 백엔드 서버 주소를 여기에서 설정합니다.
+  // 개발 환경에서는 VITE_BACKSERVER 환경 변수를 사용하고,
+  // 없으면 로컬 백엔드 주소를 기본값으로 사용합니다.
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
   useEffect(() => {
@@ -32,6 +38,7 @@ export function SearchModal({ open, onClose }) {
     setActiveTab('posts');
   }, [open]);
 
+  // 검색어가 변경될 때마다 백엔드 API를 호출하여 검색 결과를 가져옵니다.
   useEffect(() => {
     if (!open) return;
 
