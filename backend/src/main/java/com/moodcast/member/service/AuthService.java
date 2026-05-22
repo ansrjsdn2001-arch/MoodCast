@@ -140,6 +140,14 @@ public class AuthService {
         }
     }
 
+    public LoginMemberResponse getMemberById(Long memberId) {
+        Member member = authDao.findMemberById(memberId);
+        if (member == null) {
+            throw new IllegalArgumentException("사용자를 찾을 수 없습니다.");
+        }
+        return toLoginMemberResponse(member);
+    }
+
     @Transactional
     public LoginMemberResponse updateProfile(String authorizationHeader, UpdateProfileRequest request) {
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {

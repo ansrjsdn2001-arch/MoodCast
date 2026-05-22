@@ -3,12 +3,14 @@ import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
 import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import styles from './SearchModal.module.css';
 
 // SearchModal은 화면에 떠서 사용자가 검색어를 입력하면
 // 게시글/사용자/해시태그 검색 결과를 보여주는 UI 컴포넌트입니다.
 // 검색 요청은 실제로 백엔드 서버의 검색 API를 호출합니다.
 export function SearchModal({ open, onClose }) {
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [activeTab, setActiveTab] = useState('posts');
   const [results, setResults] = useState([]);
@@ -122,7 +124,15 @@ export function SearchModal({ open, onClose }) {
             results.map((item) => {
               if (activeTab === 'users') {
                 return (
-                  <article key={item.memberId} className={styles.item}>
+                  <article
+                    key={item.memberId}
+                    className={styles.item}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      onClose();
+                      navigate(`/app/user/${item.memberId}`);
+                    }}
+                  >
                     <strong>{item.nickname || item.name}</strong>
                     <p>{item.name}</p>
                   </article>

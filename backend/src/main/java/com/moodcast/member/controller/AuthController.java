@@ -77,6 +77,16 @@ public class AuthController {
         );
     }
 
+    @GetMapping("member/{memberId}")
+    public ResponseEntity<?> getMemberProfile(@PathVariable("memberId") Long memberId) {
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "member", authService.getMemberById(memberId)
+                )
+        );
+    }
+
     @PostMapping("logout")
     public ResponseEntity<?> logout() {
         ResponseCookie deleteCookie = ResponseCookie

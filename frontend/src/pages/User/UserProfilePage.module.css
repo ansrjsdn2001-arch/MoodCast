@@ -24,18 +24,66 @@
   color: #111827;
   font-size: 2rem;
   font-weight: 800;
+  flex-shrink: 0;
+}
+
+.heroInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.nameRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .hero strong {
-  display: block;
   color: #111827;
   font-size: 1.4rem;
+  word-break: break-all;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.followBtn, .chatBtn {
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.followBtn {
+  background: #111827;
+  color: #fff;
+}
+
+.followBtn:hover {
+  background: #374151;
+}
+
+.chatBtn {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.chatBtn:hover {
+  background: #e5e7eb;
 }
 
 .hero span {
   display: block;
-  margin-top: 6px;
+  margin-top: 4px;
   color: #667085;
+  font-size: 0.95rem;
 }
 
 .hero p {
