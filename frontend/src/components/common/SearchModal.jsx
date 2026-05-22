@@ -1,13 +1,25 @@
 import CloseIcon from '@mui/icons-material/Close';
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
-import { useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { feedPosts, searchUsers, trendingTags } from '../../data/moodcastData';
+import { useNavigate } from 'react-router-dom';
 import styles from './SearchModal.module.css';
 
+// SearchModal은 화면에 떠서 사용자가 검색어를 입력하면
+// 게시글/사용자/해시태그 검색 결과를 보여주는 UI 컴포넌트입니다.
+// 검색 요청은 실제로 백엔드 서버의 검색 API를 호출합니다.
 export function SearchModal({ open, onClose }) {
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [activeTab, setActiveTab] = useState('posts');
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  // 백엔드 서버 주소를 여기에서 설정합니다.
+  // 개발 환경에서는 VITE_BACKSERVER 환경 변수를 사용하고,
+  // 없으면 로컬 백엔드 주소를 기본값으로 사용합니다.
+  const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
   useEffect(() => {
     if (!open) return undefined;
@@ -28,16 +40,37 @@ export function SearchModal({ open, onClose }) {
     setActiveTab('posts');
   }, [open]);
 
-  const results = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (activeTab === 'users') {
-      return searchUsers.filter((item) => `${item.name} ${item.handle}`.toLowerCase().includes(normalized));
+  // 검색어가 변경될 때마다 백엔드 API를 호출하여 검색 결과를 가져옵니다.
+  useEffect(() => {
+    if (!open) return;
+
+    const normalized = query.trim();
+    if (normalized === '') {
+      setResults([]);
+      setError(null);
+      return;
     }
-    if (activeTab === 'hashtags') {
-      return trendingTags.filter((item) => item.name.toLowerCase().includes(normalized));
-    }
-    return feedPosts.filter((post) => `${post.author} ${post.text}`.toLowerCase().includes(normalized));
-  }, [activeTab, query]);
+
+    setLoading(true);
+    setError(null);
+
+    axios
+      .get(`${BACKSERVER}/search/${activeTab}`, {
+        params: {
+          q: normalized,
+        },
+      })
+      .then((response) => {
+        setResults(response.data?.results || []);
+      })
+      .catch(() => {
+        setError('검색 중 오류가 발생했습니다. 다시 시도해주세요.');
+        setResults([]);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [activeTab, query, open]);
 
   if (!open) return null;
 
@@ -72,27 +105,50 @@ export function SearchModal({ open, onClose }) {
         </div>
 
         <div className={styles.list}>
-          {results.length ? (
+          {query.trim() === '' ? (
+            <article className={styles.item}>
+              <strong>검색어를 입력하세요</strong>
+              <p>게시글, 사용자, 해시태그를 검색할 수 있습니다.</p>
+            </article>
+          ) : loading ? (
+            <article className={styles.item}>
+              <strong>검색 중입니다...</strong>
+              <p>잠시만 기다려주세요.</p>
+            </article>
+          ) : error ? (
+            <article className={styles.item}>
+              <strong>검색 중 오류가 발생했습니다.</strong>
+              <p>{error}</p>
+            </article>
+          ) : results.length ? (
             results.map((item) => {
-              if ('handle' in item) {
+              if (activeTab === 'users') {
                 return (
-                  <article key={item.handle} className={styles.item}>
-                    <strong>{item.name}</strong>
-                    <p>{item.handle}</p>
+                  <article
+                    key={item.memberId}
+                    className={styles.item}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      onClose();
+                      navigate(`/app/user/${item.memberId}`);
+                    }}
+                  >
+                    <strong>{item.nickname || item.name}</strong>
+                    <p>{item.name}</p>
                   </article>
                 );
               }
-              if ('count' in item) {
+              if (activeTab === 'hashtags') {
                 return (
-                  <article key={item.name} className={styles.item}>
-                    <strong>{item.name}</strong>
-                    <p>{item.count}</p>
+                  <article key={item.hashtagId} className={styles.item}>
+                    <strong>#{item.hashtag}</strong>
+                    <p>{item.postCount ?? 0}개의 게시물</p>
                   </article>
                 );
               }
               return (
-                <article key={item.id} className={styles.item}>
-                  <strong>{item.author}</strong>
+                <article key={item.postId} className={styles.item}>
+                  <strong>{item.authorName || item.authorNickname}</strong>
                   <p>{item.text}</p>
                 </article>
               );

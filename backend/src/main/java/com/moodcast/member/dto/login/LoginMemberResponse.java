@@ -13,5 +13,6 @@ public class LoginMemberResponse {
     private String name;
     private String nickname;
     private String profileImageUrl;
+    private String bio;
     private String role;
 }
