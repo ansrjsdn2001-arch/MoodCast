@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../hooks/useAuthStore';
 import styles from './SearchModal.module.css';
 
 // SearchModal은 화면에 떠서 사용자가 검색어를 입력하면
@@ -16,6 +17,7 @@ export function SearchModal({ open, onClose }) {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const { member: currentMember, accessToken: token } = useAuthStore();
   // 백엔드 서버 주소를 여기에서 설정합니다.
   // 개발 환경에서는 VITE_BACKSERVER 환경 변수를 사용하고,
   // 없으면 로컬 백엔드 주소를 기본값으로 사용합니다.
@@ -40,6 +42,27 @@ export function SearchModal({ open, onClose }) {
     setActiveTab('posts');
   }, [open]);
 
+  const toggleFollow = (memberId) => {
+    const effectiveToken = token || window.sessionStorage.getItem('moodcast-access-token');
+    if (!effectiveToken) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+
+    axios.post(`${BACKSERVER}/auth/follow/${memberId}`, {}, {
+      headers: { Authorization: `Bearer ${effectiveToken}` }
+    })
+      .then((res) => {
+        const newStatus = res.data.following;
+        setResults((prev) => prev.map((item) =>
+          item.memberId === memberId ? { ...item, following: newStatus } : item
+        ));
+      })
+      .catch(() => {
+        alert('팔로우 변경에 실패했습니다. 다시 시도해주세요.');
+      });
+  };
+
   // 검색어가 변경될 때마다 백엔드 API를 호출하여 검색 결과를 가져옵니다.
   useEffect(() => {
     if (!open) return;
@@ -54,11 +77,17 @@ export function SearchModal({ open, onClose }) {
     setLoading(true);
     setError(null);
 
+    const effectiveToken = token || window.sessionStorage.getItem('moodcast-access-token');
+    const config = effectiveToken ? {
+      headers: { Authorization: `Bearer ${effectiveToken}` }
+    } : {};
+
     axios
       .get(`${BACKSERVER}/search/${activeTab}`, {
         params: {
           q: normalized,
         },
+        ...config,
       })
       .then((response) => {
         setResults(response.data?.results || []);
@@ -155,12 +184,25 @@ export function SearchModal({ open, onClose }) {
                           (item.nickname || item.name || '?').charAt(0).toUpperCase()
                         )}
                       </div>
-                      <div>
+                      <div style={{ flex: 1 }}>
                         <strong style={{ display: 'block' }}>{item.nickname || item.name}</strong>
                         <span style={{ fontSize: '12px', color: '#888' }}>
                           @{item.email ? item.email.split('@')[0] : item.memberId}
                         </span>
                       </div>
+                      {currentMember?.memberId !== item.memberId && (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleFollow(item.memberId);
+                          }}
+                          className={item.following ? styles.unfollowButton : styles.followButton}
+                          style={{ whiteSpace: 'nowrap' }}
+                        >
+                          {item.following ? '언팔로우' : '팔로우'}
+                        </button>
+                      )}
                     </div>
                   </article>
                 );

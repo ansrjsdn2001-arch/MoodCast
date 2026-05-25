@@ -64,3 +64,32 @@
   margin: 6px 0 0;
   color: #667085;
 }
+
+.followButton,
+.unfollowButton {
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.followButton {
+  background: #0095f6;
+  color: #fff;
+}
+
+.followButton:hover {
+  background: #1877f2;
+}
+
+.unfollowButton {
+  background: #ff4d4f;
+  color: #fff;
+}
+
+.unfollowButton:hover {
+  background: #ff7875;
+}

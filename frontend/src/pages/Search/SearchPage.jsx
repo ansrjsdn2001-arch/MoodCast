@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { DesktopShell } from '../../components/layout/DesktopShell';
 import { MobileShell } from '../../components/layout/MobileShell';
 import { useIsDesktop } from '../../hooks/useViewportWidth';
+import { useAuthStore } from '../../hooks/useAuthStore';
 import styles from './SearchPage.module.css';
 
 // SearchPage는 검색 페이지 화면 전체를 담당합니다.
@@ -16,6 +17,7 @@ export function SearchPage() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const { member: currentMember, accessToken: token } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
   // 검색어 또는 탭이 바뀌면 백엔드에 검색 요청을 다시 보냅니다.
@@ -30,11 +32,17 @@ export function SearchPage() {
     setLoading(true);
     setError(null);
 
+    const effectiveToken = token || window.sessionStorage.getItem('moodcast-access-token');
+    const config = effectiveToken ? {
+      headers: { Authorization: `Bearer ${effectiveToken}` }
+    } : {};
+
     axios
       .get(`${BACKSERVER}/search/${activeTab}`, {
         params: {
           q: normalized,
         },
+        ...config,
       })
       .then((response) => {
         setResults(response.data?.results || []);
@@ -46,7 +54,28 @@ export function SearchPage() {
       .finally(() => {
         setLoading(false);
       });
-  }, [activeTab, query]);
+  }, [activeTab, query, BACKSERVER, token]);
+
+  const toggleFollow = (memberId) => {
+    const effectiveToken = token || window.sessionStorage.getItem('moodcast-access-token');
+    if (!effectiveToken) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+
+    axios.post(`${BACKSERVER}/auth/follow/${memberId}`, {}, {
+      headers: { Authorization: `Bearer ${effectiveToken}` }
+    })
+      .then((res) => {
+        const newStatus = res.data.following;
+        setResults((prev) => prev.map((item) =>
+          item.memberId === memberId ? { ...item, following: newStatus } : item
+        ));
+      })
+      .catch(() => {
+        alert('팔로우 변경에 실패했습니다. 다시 시도해주세요.');
+      });
+  };
 
   const content = (
     <section className={styles.wrap}>
@@ -83,8 +112,8 @@ export function SearchPage() {
                 <article 
                   key={item.memberId} 
                   className={styles.item}
-                  onClick={() => navigate(`/app/user/${item.memberId}`)}
                   style={{ cursor: 'pointer' }}
+                  onClick={() => navigate(`/app/user/${item.memberId}`)}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <div style={{ 
@@ -106,12 +135,25 @@ export function SearchPage() {
                         (item.nickname || item.name || '?').charAt(0).toUpperCase()
                       )}
                     </div>
-                    <div>
+                    <div style={{ flex: 1 }}>
                       <strong style={{ display: 'block' }}>{item.nickname || item.name}</strong>
                       <span style={{ fontSize: '13px', color: '#888' }}>
                         @{item.email ? item.email.split('@')[0] : item.memberId}
                       </span>
                     </div>
+                    {currentMember?.memberId !== item.memberId && (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          toggleFollow(item.memberId);
+                        }}
+                        className={item.following ? styles.unfollowButton : styles.followButton}
+                        style={{ whiteSpace: 'nowrap' }}
+                      >
+                        {item.following ? '언팔로우' : '팔로우'}
+                      </button>
+                    )}
                   </div>
                 </article>
               );
