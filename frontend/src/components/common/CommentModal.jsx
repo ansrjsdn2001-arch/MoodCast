@@ -7,6 +7,7 @@ import SendOutlinedIcon from '@mui/icons-material/SendOutlined';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import ReplyIcon from '@mui/icons-material/Reply';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
@@ -26,6 +27,10 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editText, setEditText] = useState('');
+  // 대댓글 관련 state
+  const [replyingToId, setReplyingToId] = useState(null);  // 어느 댓글에 답글 쓰는지
+  const [replyText, setReplyText] = useState('');
+  const [expandedReplies, setExpandedReplies] = useState({});  // 답글 펼침 여부
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -83,13 +88,20 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
   if (!open || !post) return null;
 
   const postProfileLink = post.profileLink ?? (post.memberId ? `/app/user/${post.memberId}` : null);
+
   const handleEditSave = async (commentId) => {
     if (!editText.trim()) return;
     try {
       await axios.put(`${BACKSERVER}/posts/comments/${commentId}`, { content: editText.trim() }, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      setLocalComments((prev) => prev.map((c) => (c.commentId === commentId ? { ...c, content: editText.trim() } : c)));
+      setLocalComments((prev) => prev.map((c) => {
+        if (c.commentId === commentId) return { ...c, content: editText.trim() };
+        return {
+          ...c,
+          replies: (c.replies ?? []).map((r) => r.commentId === commentId ? { ...r, content: editText.trim() } : r),
+        };
+      }));
       setEditingId(null);
       if (onCommentUpdate) onCommentUpdate();
     } catch {
@@ -97,19 +109,54 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
     }
   };
 
-  const handleDeleteComment = async (commentId) => {
+  const handleDeleteComment = async (commentId, parentCommentId = null) => {
     if (!window.confirm('댓글을 삭제하시겠습니까?')) return;
     try {
       await axios.delete(`${BACKSERVER}/posts/comments/${commentId}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      setLocalComments((prev) => prev.filter((c) => c.commentId !== commentId));
+      if (parentCommentId) {
+        // 대댓글 삭제
+        setLocalComments((prev) => prev.map((c) =>
+          c.commentId === parentCommentId
+            ? { ...c, replies: (c.replies ?? []).filter((r) => r.commentId !== commentId) }
+            : c
+        ));
+      } else {
+        setLocalComments((prev) => prev.filter((c) => c.commentId !== commentId));
+      }
       setMenuOpenId(null);
       if (onCommentUpdate) onCommentUpdate();
     } catch {
       alert('댓글 삭제에 실패했습니다.');
     }
-  };  const handleAuthorNavigation = (event, link) => {
+  };
+
+  const handleReplySubmit = async (parentCommentId) => {
+    if (!replyText.trim()) return;
+    try {
+      const res = await axios.post(
+        `${BACKSERVER}/posts/comments/${parentCommentId}/replies`,
+        { content: replyText.trim() },
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+      const newReply = res.data.comment;
+      newReply.author = newReply.author ?? member?.nickname;
+      setLocalComments((prev) => prev.map((c) =>
+        c.commentId === parentCommentId
+          ? { ...c, replies: [...(c.replies ?? []), newReply] }
+          : c
+      ));
+      setExpandedReplies((prev) => ({ ...prev, [parentCommentId]: true }));
+      setReplyingToId(null);
+      setReplyText('');
+      if (onCommentUpdate) onCommentUpdate();
+    } catch {
+      alert('답글 작성에 실패했습니다.');
+    }
+  };
+
+  const handleAuthorNavigation = (event, link) => {
     event.stopPropagation();
     if (link) {
       navigate(link);
@@ -125,6 +172,128 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
     if (nextComment) {
       setComment('');
     }
+  };
+
+  // 총 댓글수 (부모 + 대댓글)
+  const totalCount = localComments.reduce((acc, c) => acc + 1 + (c.replies?.length ?? 0), 0);
+
+  const renderCommentItem = (item, parentCommentId = null) => {
+    const id = item.commentId ?? item.id;
+    const commentProfileLink = item.profileLink ?? (item.memberId ? `/app/user/${item.memberId}` : null);
+    const isMyComment = member && item.memberId && String(item.memberId) === String(member.memberId);
+    const isReply = parentCommentId !== null;
+
+    return (
+      <article key={id} className={isReply ? styles.replyItem : styles.item}>
+        <div className={styles.itemHead}>
+          <div className={styles.meta}>
+            <div
+              className={isReply ? styles.replyAvatar : styles.commentAvatar}
+              onClick={(event) => handleAuthorNavigation(event, commentProfileLink)}
+              style={commentProfileLink ? { cursor: 'pointer' } : {}}
+            >
+              {item.author?.[0] ?? '?'}
+            </div>
+            <div>
+              <strong
+                onClick={(event) => handleAuthorNavigation(event, commentProfileLink)}
+                style={commentProfileLink ? { cursor: 'pointer' } : {}}
+              >
+                {item.author}
+              </strong>
+              <p>{item.time ?? item.createdAt}</p>
+            </div>
+          </div>
+          {isMyComment && (
+            <div className={styles.commentMenuWrap} ref={menuOpenId === id ? menuRef : null}>
+              <button type="button" className={styles.commentMenuBtn} onClick={() => setMenuOpenId(menuOpenId === id ? null : id)}>
+                <MoreHorizIcon fontSize="small" />
+              </button>
+              {menuOpenId === id && (
+                <div className={styles.commentMenu}>
+                  <button type="button" onClick={() => { setEditingId(id); setEditText(item.content ?? item.text ?? ''); setMenuOpenId(null); }}>
+                    <EditIcon fontSize="small" /> 수정
+                  </button>
+                  <button type="button" className={styles.danger} onClick={() => handleDeleteComment(id, parentCommentId)}>
+                    <DeleteOutlineIcon fontSize="small" /> 삭제
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        {editingId === id ? (
+          <div className={styles.editArea}>
+            <textarea
+              className={styles.editInput}
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              rows={2}
+              autoFocus
+            />
+            <div className={styles.editActions}>
+              <button type="button" className={styles.editCancel} onClick={() => setEditingId(null)}>취소</button>
+              <button type="button" className={styles.editSave} onClick={() => handleEditSave(id)}>저장</button>
+            </div>
+          </div>
+        ) : (
+          <p className={styles.commentText}>{item.content ?? item.text}</p>
+        )}
+
+        {/* 답글 달기 버튼 (최상위 댓글만) */}
+        {!isReply && (
+          <div className={styles.replyActions}>
+            <button
+              type="button"
+              className={styles.replyBtn}
+              onClick={() => {
+                setReplyingToId(replyingToId === id ? null : id);
+                setReplyText('');
+              }}
+            >
+              <ReplyIcon fontSize="small" />
+              답글 달기
+            </button>
+            {(item.replies?.length > 0) && (
+              <button
+                type="button"
+                className={styles.toggleRepliesBtn}
+                onClick={() => setExpandedReplies((prev) => ({ ...prev, [id]: !prev[id] }))}
+              >
+                {expandedReplies[id] ? '▲ 답글 숨기기' : `▼ 답글 ${item.replies.length}개 보기`}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* 답글 입력창 */}
+        {!isReply && replyingToId === id && (
+          <div className={styles.replyComposer}>
+            <textarea
+              className={styles.replyInput}
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              placeholder={`@${item.author}에게 답글 달기`}
+              rows={2}
+              autoFocus
+            />
+            <div className={styles.replyComposerActions}>
+              <button type="button" className={styles.editCancel} onClick={() => setReplyingToId(null)}>취소</button>
+              <button type="button" className={styles.editSave} onClick={() => handleReplySubmit(id)}>
+                <SendOutlinedIcon fontSize="small" /> 등록
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 대댓글 목록 */}
+        {!isReply && expandedReplies[id] && item.replies?.length > 0 && (
+          <div className={styles.repliesList}>
+            {item.replies.map((reply) => renderCommentItem(reply, id))}
+          </div>
+        )}
+      </article>
+    );
   };
 
   return createPortal(
@@ -193,7 +362,7 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
               </button>
               <button type="button" className={styles.actionButton}>
                 <ChatBubbleOutlineIcon />
-                <span>{comments.length}</span>
+                <span>{totalCount}</span>
               </button>
               <button type="button" className={styles.actionButton}>
                 <ShareOutlinedIcon />
@@ -205,72 +374,11 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
           <section className={styles.commentsSection}>
             <div className={styles.sectionTitle}>
               <strong>댓글</strong>
-              <span>{comments.length}개</span>
+              <span>{totalCount}개</span>
             </div>
             <div className={styles.list}>
               {localComments.length ? (
-                localComments.map((item) => {
-                  const commentProfileLink = item.profileLink ?? (item.memberId ? `/app/user/${item.memberId}` : null);
-                  const isMyComment = member && item.memberId && String(item.memberId) === String(member.memberId);
-                  return (
-                    <article key={item.commentId ?? item.id} className={styles.item}>
-                      <div className={styles.itemHead}>
-                        <div className={styles.meta}>
-                          <div
-                            className={styles.commentAvatar}
-                            onClick={(event) => handleAuthorNavigation(event, commentProfileLink)}
-                            style={commentProfileLink ? { cursor: 'pointer' } : {}}
-                          >
-                            {item.author?.[0] ?? '?'}
-                          </div>
-                          <div>
-                            <strong
-                              onClick={(event) => handleAuthorNavigation(event, commentProfileLink)}
-                              style={commentProfileLink ? { cursor: 'pointer' } : {}}
-                            >
-                              {item.author}
-                            </strong>
-                            <p>{item.time ?? item.createdAt}</p>
-                          </div>
-                        </div>
-                        {isMyComment && (
-                          <div className={styles.commentMenuWrap} ref={menuOpenId === (item.commentId ?? item.id) ? menuRef : null}>
-                            <button type="button" className={styles.commentMenuBtn} onClick={() => setMenuOpenId(menuOpenId === (item.commentId ?? item.id) ? null : (item.commentId ?? item.id))}>
-                              <MoreHorizIcon fontSize="small" />
-                            </button>
-                            {menuOpenId === (item.commentId ?? item.id) && (
-                              <div className={styles.commentMenu}>
-                                <button type="button" onClick={() => { setEditingId(item.commentId ?? item.id); setEditText(item.content ?? item.text ?? ''); setMenuOpenId(null); }}>
-                                  <EditIcon fontSize="small" /> 수정
-                                </button>
-                                <button type="button" className={styles.danger} onClick={() => handleDeleteComment(item.commentId ?? item.id)}>
-                                  <DeleteOutlineIcon fontSize="small" /> 삭제
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      {editingId === (item.commentId ?? item.id) ? (
-                        <div className={styles.editArea}>
-                          <textarea
-                            className={styles.editInput}
-                            value={editText}
-                            onChange={(e) => setEditText(e.target.value)}
-                            rows={2}
-                            autoFocus
-                          />
-                          <div className={styles.editActions}>
-                            <button type="button" className={styles.editCancel} onClick={() => setEditingId(null)}>취소</button>
-                            <button type="button" className={styles.editSave} onClick={() => handleEditSave(item.commentId ?? item.id)}>저장</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className={styles.commentText}>{item.content ?? item.text}</p>
-                      )}
-                    </article>
-                  );
-                })
+                localComments.map((item) => renderCommentItem(item))
               ) : (
                 <div className={styles.emptyState}>아직 댓글이 없습니다. 가장 먼저 댓글을 남겨보세요.</div>
               )}
@@ -293,3 +401,4 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
     document.body,
   );
 }
+

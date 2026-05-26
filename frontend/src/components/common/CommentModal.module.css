@@ -296,6 +296,99 @@
   font-weight: 600;
 }
 
+/* ---- 답글 관련 스타일 ---- */
+
+.replyActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.replyBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: #6366f1;
+  padding: 3px 0;
+  font-weight: 500;
+}
+
+.replyBtn:hover {
+  color: #4f46e5;
+  text-decoration: underline;
+}
+
+.toggleRepliesBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: #667085;
+  padding: 3px 0;
+}
+
+.toggleRepliesBtn:hover {
+  color: #374151;
+}
+
+.replyComposer {
+  margin-top: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.replyInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1.5px solid #6366f1;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  resize: none;
+  outline: none;
+  background: #f5f3ff;
+}
+
+.replyComposerActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.repliesList {
+  margin-top: 8px;
+  display: grid;
+  gap: 6px;
+  padding-left: 16px;
+  border-left: 2px solid #e5e7eb;
+}
+
+.replyItem {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #f0f0ff;
+}
+
+.replyAvatar {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #c7d2fe, #a5b4fc);
+  color: #111827;
+  font-weight: 800;
+  width: 32px;
+  height: 32px;
+  font-size: 0.85rem;
+}
+
+
+
 .meta {
   display: flex;
   gap: 12px;

@@ -369,9 +369,16 @@ export function FeedCard({ post, compact = false }) {
                 {/* 작성자 아닐 때만 저장/신고 가능 */}
                 {!isOwner && (
                   <>
-                    <button type="button" className={styles.menuItem} onClick={(e) => handleSave(e)}>
-                      <BookmarkBorderIcon className={styles.menuIcon} />
-                      저장
+                    <button
+                      type="button"
+                      className={`${styles.menuItem} ${saved ? styles.menuItemSaved : ''}`}
+                      onClick={(e) => handleSave(e)}
+                    >
+                      {saved
+                        ? <BookmarkIcon className={styles.menuIcon} style={{ color: '#3b82f6' }} />
+                        : <BookmarkBorderIcon className={styles.menuIcon} />
+                      }
+                      {saved ? '저장됨' : '저장'}
                     </button>
                     <button type="button" className={`${styles.menuItem} ${styles.menuItemDanger}`} onClick={(e) => handleReport(e)}>
                       <FlagIcon className={styles.menuIcon} />
