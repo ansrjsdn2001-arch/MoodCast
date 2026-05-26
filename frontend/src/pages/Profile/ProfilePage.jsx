@@ -6,7 +6,6 @@ import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import { FeedCard } from '../../components/common/FeedCard';
-import { profileHighlights } from '../../data/moodcastData';
 import styles from './ProfilePage.module.css';
 
 export function ProfilePage() {
@@ -22,7 +21,9 @@ export function ProfilePage() {
     followerCount: 0, 
     followingCount: 0,
     postCount: 0,
-    savedCount: 0
+    savedCount: 0,
+    emotionEmpathyRate: 0,
+    weeklyReactions: 0,
   });
   
   const { member: currentMember, accessToken: token, isLoggedIn } = useAuthStore();
@@ -35,6 +36,7 @@ export function ProfilePage() {
   const fetchFollowStatus = useCallback(() => {
     if (!targetId) return;
     
+    // 프로필 페이지에서 내 통계도 정확하게 보여주기 위해 토큰을 함께 보냄
     const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
     
     axios.get(`${BACKSERVER}/auth/follow/status/${targetId}`, config)
@@ -45,7 +47,9 @@ export function ProfilePage() {
             followerCount: res.data.followerCount,
             followingCount: res.data.followingCount,
             postCount: res.data.postCount,
-            savedCount: res.data.savedCount
+            savedCount: res.data.savedCount,
+            emotionEmpathyRate: res.data.emotionEmpathyRate || 0,
+            weeklyReactions: res.data.weeklyReactions || 0,
           });
         }
       })
@@ -84,7 +88,8 @@ export function ProfilePage() {
     }
 
     setPostsLoading(true);
-    axios.get(`${BACKSERVER}/posts`, { params: { memberId: targetId } })
+    const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    axios.get(`${BACKSERVER}/posts`, { params: { memberId: targetId }, ...config })
       .then(res => {
         if (res.data.success) {
           setPosts(res.data.results || []);
@@ -166,9 +171,14 @@ export function ProfilePage() {
       time: formatTime(item.createdAt),
       text: normalizeContent(item.content),
       emotionId: item.emotionId,
-      commentsList: [],
-      likes: 0,
-      vibes: 0,
+      // 서버에서 내려온 댓글 개수를 그대로 사용함
+      comments: item.comments ?? item.commentsCount ?? item.commentCount ?? 0,
+      commentsList: item.commentsList ?? [],
+      // 좋아요/저장 상태도 서버 결과에 따라 그대로 표시함
+      likes: item.likes ?? item.likeCount ?? 0,
+      vibes: item.vibes ?? item.vibesCount ?? 0,
+      likedByMe: item.likedByMe,
+      savedByMe: item.savedByMe,
       previewComment: null,
       postId: item.postId,
     };
@@ -303,14 +313,16 @@ export function ProfilePage() {
         })}
       </div>
 
-      {/* 하이라이트 섹션 추가함 */}
+      {/* 하이라이트 섹션 - 실제 프로필 통계 */}
       <section className={styles.highlights}>
-        {profileHighlights.map((item) => (
-          <div key={item.label} className={styles.highlight}>
-            <span>{item.label}</span>
-            <strong>{item.value}</strong>
-          </div>
-        ))}
+        <div className={styles.highlight}>
+          <span>감정 공감률</span>
+          <strong>{followInfo.emotionEmpathyRate}%</strong>
+        </div>
+        <div className={styles.highlight}>
+          <span>주간 반응</span>
+          <strong>{followInfo.weeklyReactions}</strong>
+        </div>
       </section>
 
       {/* 최근 게시물 섹션 추가함 */}

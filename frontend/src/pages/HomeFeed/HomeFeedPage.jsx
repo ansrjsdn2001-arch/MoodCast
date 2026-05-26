@@ -74,6 +74,8 @@ export function HomeFeedPage() {
         const items = response.data?.results || [];
         setPosts(items.map((item) => ({
           id: item.postId,
+          memberId: item.memberId,
+          profileLink: item.memberId ? `/app/user/${item.memberId}` : null,
           title: item.title,
           author: item.author,
           avatar: item.author ? item.author.charAt(0).toUpperCase() : '?',

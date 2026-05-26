@@ -5,9 +5,11 @@ import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
 import SendOutlinedIcon from '@mui/icons-material/SendOutlined';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import styles from './CommentModal.module.css';
 
 export function CommentModal({ open, post, comments, onClose, onSubmit }) {
+  const navigate = useNavigate();
   const [comment, setComment] = useState('');
 
   useEffect(() => {
@@ -44,6 +46,14 @@ export function CommentModal({ open, post, comments, onClose, onSubmit }) {
 
   if (!open || !post) return null;
 
+  const postProfileLink = post.profileLink ?? (post.memberId ? `/app/user/${post.memberId}` : null);
+  const handleAuthorNavigation = (event, link) => {
+    event.stopPropagation();
+    if (link) {
+      navigate(link);
+    }
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     const value = comment.trim();
@@ -60,9 +70,20 @@ export function CommentModal({ open, post, comments, onClose, onSubmit }) {
       <section className={styles.modal} role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
         <header className={styles.header}>
           <div className={styles.headerMeta}>
-            <div className={styles.avatar}>{post.avatar}</div>
+            <div
+              className={styles.avatar}
+              onClick={(event) => handleAuthorNavigation(event, postProfileLink)}
+              style={postProfileLink ? { cursor: 'pointer' } : {}}
+            >
+              {post.avatar}
+            </div>
             <div>
-              <strong>{post.author}</strong>
+              <strong
+                onClick={(event) => handleAuthorNavigation(event, postProfileLink)}
+                style={postProfileLink ? { cursor: 'pointer' } : {}}
+              >
+                {post.author}
+              </strong>
               <p>{post.time}</p>
             </div>
           </div>
@@ -75,7 +96,14 @@ export function CommentModal({ open, post, comments, onClose, onSubmit }) {
           <section className={styles.postSection}>
             <p className={styles.postText}>{post.text}</p>
             {post.imageSrc ? (
-              <div className={styles.postImageArea}>
+              <div
+                className={styles.postImageArea}
+                onClick={() => post.postId && navigate(`/app/post/${post.postId}`)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter') post.postId && navigate(`/app/post/${post.postId}`); }}
+                style={{ cursor: 'pointer' }}
+              >
                 <img className={styles.detailPostImage} src={post.imageSrc} alt={post.imageAlt ?? post.author} />
               </div>
             ) : null}
@@ -102,18 +130,32 @@ export function CommentModal({ open, post, comments, onClose, onSubmit }) {
             </div>
             <div className={styles.list}>
               {comments.length ? (
-                comments.map((item) => (
-                  <article key={item.commentId ?? item.id} className={styles.item}>
-                    <div className={styles.meta}>
-                      <div className={styles.commentAvatar}>{item.author?.[0] ?? '?'}</div>
-                      <div>
-                        <strong>{item.author}</strong>
-                        <p>{item.time ?? item.createdAt}</p>
+                comments.map((item) => {
+                  const commentProfileLink = item.profileLink ?? (item.memberId ? `/app/user/${item.memberId}` : null);
+                  return (
+                    <article key={item.commentId ?? item.id} className={styles.item}>
+                      <div className={styles.meta}>
+                        <div
+                          className={styles.commentAvatar}
+                          onClick={(event) => handleAuthorNavigation(event, commentProfileLink)}
+                          style={commentProfileLink ? { cursor: 'pointer' } : {}}
+                        >
+                          {item.author?.[0] ?? '?'}
+                        </div>
+                        <div>
+                          <strong
+                            onClick={(event) => handleAuthorNavigation(event, commentProfileLink)}
+                            style={commentProfileLink ? { cursor: 'pointer' } : {}}
+                          >
+                            {item.author}
+                          </strong>
+                          <p>{item.time ?? item.createdAt}</p>
+                        </div>
                       </div>
-                    </div>
-                    <p>{item.text ?? item.content}</p>
-                  </article>
-                ))
+                      <p>{item.text ?? item.content}</p>
+                    </article>
+                  );
+                })
               ) : (
                 <div className={styles.emptyState}>아직 댓글이 없습니다. 가장 먼저 댓글을 남겨보세요.</div>
               )}

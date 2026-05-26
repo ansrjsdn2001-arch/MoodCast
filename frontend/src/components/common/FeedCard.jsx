@@ -112,11 +112,18 @@ export function FeedCard({ post, compact = false }) {
   const imageSrc = post.imageSrc ?? post.image ?? post.cover ?? post.thumbnail;
   const cardText = post.text ?? post.content ?? post.body ?? '';
   const timeLabel = post.time ?? post.createdAt ?? post.created_at ?? '';
+  const profileLink = post.profileLink ?? (post.memberId ? `/app/user/${post.memberId}` : null);
 
   const fetchComments = async (postId) => {
     try {
       const response = await axios.get(`${BACKSERVER}/posts/${postId}/comments`);
-      setComments(response.data?.results || []);
+      const items = response.data?.results || [];
+      setComments(items.map((item) => ({
+        ...item,
+        memberId: item.memberId,
+        profileLink: item.memberId ? `/app/user/${item.memberId}` : null,
+        author: item.author || item.nickname || '익명',
+      })));
     } catch (error) {
       console.error('댓글을 불러오는 중 오류가 발생했습니다.', error);
     }
@@ -151,6 +158,13 @@ export function FeedCard({ post, compact = false }) {
   const handleCardClick = () => {
     const postId = post.id ?? post.postId;
     navigate(`/app/post/${postId}`);
+  };
+
+  const handleAuthorClick = (event) => {
+    event.stopPropagation();
+    if (profileLink) {
+      navigate(profileLink);
+    }
   };
 
   const handleEdit = (event) => {
@@ -280,9 +294,15 @@ export function FeedCard({ post, compact = false }) {
         }
       );
       const nextComment = response.data.comment;
-      setComments((prev) => [...prev, nextComment]);
+      const mappedComment = {
+        ...nextComment,
+        memberId: nextComment?.memberId,
+        profileLink: nextComment?.memberId ? `/app/user/${nextComment.memberId}` : null,
+        author: nextComment?.author || nextComment?.nickname || '익명',
+      };
+      setComments((prev) => [...prev, mappedComment]);
       setCommentCount((prev) => prev + 1);
-      return nextComment;
+      return mappedComment;
     } catch (err) {
       console.error('댓글 등록 실패:', err);
       alert('댓글 등록에 실패했습니다.');
@@ -294,9 +314,13 @@ export function FeedCard({ post, compact = false }) {
     <>
       <article className={`${styles.card} ${compact ? styles.compact : ''}`} onClick={handleCardClick} style={{ cursor: 'pointer' }}>
         <div className={styles.head} onClick={(e) => e.stopPropagation()}>
-          <div className={styles.avatar}>{post.avatar}</div>
+          <div className={styles.avatar} onClick={handleAuthorClick} style={profileLink ? { cursor: 'pointer' } : {}}>
+            {post.avatar}
+          </div>
           <div className={styles.meta}>
-            <strong>{post.author}</strong>
+            <strong onClick={handleAuthorClick} style={profileLink ? { cursor: 'pointer' } : {}}>
+              {post.author}
+            </strong>
             <div className={styles.metaRow}>
               <span>{timeLabel}</span>
               {post.emotionId && (
@@ -365,7 +389,7 @@ export function FeedCard({ post, compact = false }) {
         {post.title && <p className={styles.title}>{post.title}</p>}
         <p className={styles.text}>{cardText}</p>
         {imageSrc && (
-          <div className={styles.postImageWrap}>
+          <div className={styles.postImageWrap} onClick={(e) => { e.stopPropagation(); handleCardClick(); }} style={{ cursor: 'pointer' }}>
             <img className={styles.postImage} src={imageSrc} alt={post.imageAlt ?? post.author} />
           </div>
         )}

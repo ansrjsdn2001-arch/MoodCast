@@ -44,6 +44,9 @@ public class PostService {
         if ((title == null || title.isEmpty()) && (content == null || content.isEmpty())) {
             throw new IllegalArgumentException("제목 또는 본문을 입력해주세요.");
         }
+        if (request.getEmotionId() == null) {
+            throw new IllegalArgumentException("오늘의 감정을 선택해주세요.");
+        }
 
         Post post = new Post();
         post.setMemberId(memberId);
@@ -236,6 +239,9 @@ public class PostService {
 
         if ((title == null || title.isEmpty()) && (content == null || content.isEmpty())) {
             throw new IllegalArgumentException("제목 또는 본문을 입력해주세요.");
+        }
+        if (request.getEmotionId() == null) {
+            throw new IllegalArgumentException("오늘의 감정을 선택해주세요.");
         }
 
         Post post = new Post();
