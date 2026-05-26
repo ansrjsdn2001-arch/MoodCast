@@ -20,7 +20,7 @@ export const LoginPage = () => {
     type: "",
     message: "",
   });
-  const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
+  const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
 
   const showToast = (type, message) => {
     setToast({
