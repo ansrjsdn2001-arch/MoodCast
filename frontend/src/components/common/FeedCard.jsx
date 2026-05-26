@@ -20,6 +20,7 @@ import ReactDOM from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { defaultAvatarSrc } from '../../shared/lib/defaultAvatar';
 import { CommentModal } from './CommentModal';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { HashtagRow } from './HashtagRow';
@@ -74,6 +75,27 @@ function MoodVisual({ emotionId }) {
   );
 }
 
+function extractImageUrl(html) {
+  if (!html) return null;
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const img = doc.querySelector('img');
+    return img?.src ?? null;
+  } catch (error) {
+    const match = html.match(/<img[^>]+src=["']?([^"' >]+)["']?/i);
+    return match ? match[1] : null;
+  }
+}
+
+function stripHtml(html) {
+  if (!html) return '';
+  const text = html.replace(/<img[^>]*>/gi, ' ').replace(/<[^>]+>/g, ' ').trim();
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = text;
+  return textarea.value;
+}
+
 export function FeedCard({ post, compact = false }) {
   const navigate = useNavigate();
   const { member, accessToken: storeToken } = useAuthStore();
@@ -119,10 +141,13 @@ export function FeedCard({ post, compact = false }) {
     setSaved(Boolean(post.savedByMe));
   }, [post]);
 
-  const imageSrc = post.imageSrc ?? post.image ?? post.cover ?? post.thumbnail;
-  const cardText = post.text ?? post.content ?? post.body ?? '';
+  const rawContent = post.content ?? post.body ?? post.text ?? '';
+  const imageSrc = post.imageSrc ?? post.image ?? post.cover ?? post.thumbnail ?? extractImageUrl(post.content ?? post.body ?? '');
+  const cardText = post.text ?? stripHtml(rawContent);
   const timeLabel = post.time ?? post.createdAt ?? post.created_at ?? '';
   const profileLink = post.profileLink ?? (post.memberId ? `/app/user/${post.memberId}` : null);
+  const profileImageUrl = post.profileImageUrl ?? post.avatarUrl ?? null;
+  const profileInitial = post.author ? post.author.charAt(0).toUpperCase() : '?';
 
   const fetchComments = async (postId) => {
     try {
@@ -132,6 +157,7 @@ export function FeedCard({ post, compact = false }) {
         ...item,
         memberId: item.memberId,
         profileLink: item.memberId ? `/app/user/${item.memberId}` : null,
+        profileImageUrl: item.profileImageUrl ?? item.profile_image_url ?? null,
         author: item.author || item.nickname || '익명',
       })));
     } catch (error) {
@@ -141,7 +167,11 @@ export function FeedCard({ post, compact = false }) {
 
   const openCommentModal = async (event) => {
     event?.stopPropagation();
-    setSelectedPost(post);
+    setSelectedPost({
+      ...post,
+      imageSrc: imageSrc,
+      text: cardText,
+    });
     await fetchComments(postId);
     setIsCommentModalOpen(true);
   };
@@ -304,6 +334,7 @@ export function FeedCard({ post, compact = false }) {
         ...nextComment,
         memberId: nextComment?.memberId,
         profileLink: nextComment?.memberId ? `/app/user/${nextComment.memberId}` : null,
+        profileImageUrl: nextComment?.profileImageUrl ?? nextComment?.profile_image_url ?? null,
         author: nextComment?.author || nextComment?.nickname || '익명',
       };
       setComments((prev) => [...prev, mappedComment]);
@@ -321,7 +352,7 @@ export function FeedCard({ post, compact = false }) {
       <article className={`${styles.card} ${compact ? styles.compact : ''}`} onClick={handleCardClick} style={{ cursor: 'pointer' }}>
         <div className={styles.head} onClick={(e) => e.stopPropagation()}>
           <div className={styles.avatar} onClick={handleAuthorClick} style={profileLink ? { cursor: 'pointer' } : {}}>
-            {post.avatar}
+            <img src={profileImageUrl || defaultAvatarSrc} alt={post.author || '프로필'} />
           </div>
           <div className={styles.meta}>
             <strong onClick={handleAuthorClick} style={profileLink ? { cursor: 'pointer' } : {}}>
@@ -358,37 +389,37 @@ export function FeedCard({ post, compact = false }) {
                       <EditIcon className={styles.menuIcon} />
                       수정
                     </button>
-                    <button type="button" className={`${styles.menuItem} ${styles.menuItemDanger}`} onClick={(e) => handleDelete(e)}>
-                      <DeleteOutlineIcon className={styles.menuIcon} />
-                      삭제
-                    </button>
                   </>
                 )}
-                {/* 작성자 아닐 때만 저장/신고 가능 */}
-                {!isOwner && (
-                  <>
-                    <button
-                      type="button"
-                      className={`${styles.menuItem} ${saved ? styles.menuItemSaved : ''}`}
-                      onClick={(e) => handleSave(e)}
-                    >
-                      {saved
-                        ? <BookmarkIcon className={styles.menuIcon} style={{ color: '#3b82f6' }} />
-                        : <BookmarkBorderIcon className={styles.menuIcon} />
-                      }
-                      {saved ? '저장됨' : '저장'}
-                    </button>
+                <>
+                  <button
+                    type="button"
+                    className={`${styles.menuItem} ${saved ? styles.menuItemSaved : ''}`}
+                    onClick={(e) => handleSave(e)}
+                  >
+                    {saved
+                      ? <BookmarkIcon className={styles.menuIcon} style={{ color: '#3b82f6' }} />
+                      : <BookmarkBorderIcon className={styles.menuIcon} />
+                    }
+                    {saved ? '저장됨' : '저장'}
+                  </button>
+                  <button type="button" className={styles.menuItem} onClick={(e) => handleShare(e)}>
+                    <ShareIcon className={styles.menuIcon} />
+                    공유
+                  </button>
+                  {!isOwner && (
                     <button type="button" className={`${styles.menuItem} ${styles.menuItemDanger}`} onClick={(e) => handleReport(e)}>
                       <FlagIcon className={styles.menuIcon} />
                       신고
                     </button>
-                  </>
+                  )}
+                </>
+                {isOwner && (
+                  <button type="button" className={`${styles.menuItem} ${styles.menuItemDanger}`} onClick={(e) => handleDelete(e)}>
+                    <DeleteOutlineIcon className={styles.menuIcon} />
+                    삭제
+                  </button>
                 )}
-                {/* 모든 사용자가 사용 가능 */}
-                <button type="button" className={styles.menuItem} onClick={(e) => handleShare(e)}>
-                  <ShareIcon className={styles.menuIcon} />
-                  공유
-                </button>
               </div>
             )}
           </div>
@@ -396,12 +427,12 @@ export function FeedCard({ post, compact = false }) {
 
         {post.title && <p className={styles.title}>{post.title}</p>}
         <p className={styles.text}>{cardText}</p>
-        <HashtagRow tags={post.tags} variant="feed" />
         {imageSrc && (
           <div className={styles.postImageWrap} onClick={(e) => { e.stopPropagation(); handleCardClick(); }} style={{ cursor: 'pointer' }}>
             <img className={styles.postImage} src={imageSrc} alt={post.imageAlt ?? post.author} />
           </div>
         )}
+        <HashtagRow tags={post.tags} variant="feed" />
 
         {post.attachments?.length ? (
           <div className={styles.attachmentArea}>

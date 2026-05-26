@@ -3,6 +3,7 @@ package com.moodcast.member.dto.login;
 public class UpdateProfileRequest {
     private String nickname;
     private String bio;
+    private String profileImageUrl;
 
     public String getNickname() {
         return nickname;
@@ -18,5 +19,13 @@ public class UpdateProfileRequest {
 
     public void setBio(String bio) {
         this.bio = bio;
+    }
+
+    public String getProfileImageUrl() {
+        return profileImageUrl;
+    }
+
+    public void setProfileImageUrl(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
     }
 }

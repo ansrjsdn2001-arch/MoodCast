@@ -6,6 +6,7 @@ import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/useAuthStore';
 import styles from './CreatePostPage.module.css';
+import { uploadImage } from '../../shared/lib/uploadImage';
 import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
 import SentimentDissatisfiedIcon from '@mui/icons-material/SentimentDissatisfied';
 import SpaIcon from '@mui/icons-material/Spa';
@@ -37,29 +38,43 @@ export function CreatePostPage() {
   const { accessToken: token } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
-  const handleImageUpload = (event) => {
+  const handleImageUpload = async (event) => {
     const files = Array.from(event.target.files || []);
     if (!files.length) return;
     const editor = editorRef.current;
+    const effectiveToken = token || window.sessionStorage.getItem('moodcast-access-token');
 
-    files.forEach((file) => {
-      const url = URL.createObjectURL(file);
-      const id = `${file.name}-${file.size}-${Date.now()}`;
-      const html = `<img src="${url}" alt="${file.name}" data-id="${id}" class="${styles.editorImage}" />`;
+    for (const file of files) {
+      // 미리보기용 임시 플레이스홀더 삽입
+      const tempId = `tmp-${Date.now()}-${Math.random()}`;
+      const placeholder = `<span id="${tempId}" style="color:#aaa">[업로드 중...]</span>`;
       editor.focus();
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
         range.deleteContents();
-        const fragment = range.createContextualFragment(html);
-        range.insertNode(fragment);
+        range.insertNode(range.createContextualFragment(placeholder));
         range.collapse(false);
-        selection.removeAllRanges();
-        selection.addRange(range);
       } else {
-        editor.insertAdjacentHTML('beforeend', html);
+        editor.insertAdjacentHTML('beforeend', placeholder);
       }
-    });
+
+      try {
+        const url = await uploadImage(file, effectiveToken, BACKSERVER, {
+          maxWidth: 1200,
+          maxHeight: 1200,
+          quality: 0.8,
+          cropSquare: false,
+        });
+        const imgHtml = `<img src="${url}" alt="${file.name}" class="${styles.editorImage}" />`;
+        const el = document.getElementById(tempId);
+        if (el) el.outerHTML = imgHtml;
+      } catch (err) {
+        const el = document.getElementById(tempId);
+        if (el) el.remove();
+        alert(`이미지 업로드 실패: ${err.message}`);
+      }
+    }
 
     setContent(editor.innerHTML);
     event.target.value = '';

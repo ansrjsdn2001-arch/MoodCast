@@ -5,6 +5,7 @@ import { MobileShell } from '../../components/layout/MobileShell';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useIsDesktop } from '../../hooks/useViewportWidth';
 import { FeedCard } from '../../components/common/FeedCard';
+import { normalizePostDataArray } from '../../shared/lib/postHelpers';
 import styles from './SavedPage.module.css';
 
 function SavedList({ posts }) {
@@ -42,7 +43,8 @@ export function SavedPage() {
       },
     })
       .then((response) => {
-        setPosts(response.data?.results || []);
+        const items = response.data?.results || [];
+        setPosts(normalizePostDataArray(items));
       })
       .catch((error) => {
         console.error('저장된 게시물 조회 실패', error);

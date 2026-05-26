@@ -186,7 +186,7 @@ public class LoginService {
 
             checkLoginAllowed(member);
 
-            loginDao.updateMemberProfile(memberId, request.getNickname().trim(), request.getBio());
+            loginDao.updateMemberProfile(memberId, request.getNickname().trim(), request.getBio(), request.getProfileImageUrl());
 
             Member updated = loginDao.findMemberById(memberId);
             if (updated == null) {

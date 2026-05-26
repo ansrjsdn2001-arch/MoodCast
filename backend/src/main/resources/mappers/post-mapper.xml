@@ -56,6 +56,7 @@
             p.content as content,
             p.emotion_id as emotionId,
             date_format(p.created_at, '%Y-%m-%d %H:%i') as createdAt,
+            coalesce(m.profile_image_url, '') as profileImageUrl,
             coalesce((
                 select group_concat(concat('#', h.hashtag) order by h.hashtag separator ' ')
                 from post_hashtag ph
@@ -106,6 +107,7 @@
             p.content as content,
             p.emotion_id as emotionId,
             date_format(p.created_at, '%Y-%m-%d %H:%i') as createdAt,
+            coalesce(m.profile_image_url, '') as profileImageUrl,
             coalesce((
                 select group_concat(concat('#', h.hashtag) order by h.hashtag separator ' ')
                 from post_hashtag ph join hashtag h on ph.hashtag_id = h.hashtag_id
@@ -131,6 +133,7 @@
             p.content as content,
             p.emotion_id as emotionId,
             date_format(p.created_at, '%Y-%m-%d %H:%i') as createdAt,
+            coalesce(m.profile_image_url, '') as profileImageUrl,
             coalesce((
                 select group_concat(concat('#', h.hashtag) order by h.hashtag separator ' ')
                 from post_hashtag ph join hashtag h on ph.hashtag_id = h.hashtag_id
@@ -156,6 +159,7 @@
             coalesce(m.nickname, m.name) as author,
             c.content as content,
             date_format(c.created_at, '%Y-%m-%d %H:%i') as createdAt,
+            coalesce(m.profile_image_url, '') as profileImageUrl,
             c.parent_comment_id as parentCommentId
         from comment_tbl c
                  join members m on c.member_id = m.member_id
@@ -173,6 +177,7 @@
             coalesce(m.nickname, m.name) as author,
             c.content as content,
             date_format(c.created_at, '%Y-%m-%d %H:%i') as createdAt,
+            coalesce(m.profile_image_url, '') as profileImageUrl,
             c.parent_comment_id as parentCommentId
         from comment_tbl c
                  join members m on c.member_id = m.member_id
@@ -208,6 +213,7 @@
             coalesce(m.nickname, m.name) as author,
             c.content as content,
             date_format(c.created_at, '%Y-%m-%d %H:%i') as createdAt,
+            coalesce(m.profile_image_url, '') as profileImageUrl,
             c.parent_comment_id as parentCommentId
         from comment_tbl c
                  join members m on c.member_id = m.member_id
@@ -283,6 +289,7 @@
         select
             p.post_id as postId,
             coalesce(m.nickname, m.name) as author,
+            coalesce(m.profile_image_url, '') as profileImageUrl,
             p.title as title,
             p.content as content,
             p.emotion_id as emotionId,

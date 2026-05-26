@@ -182,6 +182,7 @@ public class PostService {
         }
 
         comment.setAuthor(loginMember.getNickname());
+        comment.setProfileImageUrl(loginMember.getProfileImageUrl());
         return comment;
     }
 

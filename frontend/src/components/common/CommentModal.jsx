@@ -13,6 +13,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { defaultAvatarSrc } from '../../shared/lib/defaultAvatar';
 import { HashtagRow } from './HashtagRow';
 import styles from './CommentModal.module.css';
 
@@ -41,7 +42,10 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
   }, [open, post]);
 
   useEffect(() => {
-    setLocalComments(comments ?? []);
+    setLocalComments((comments ?? []).map((item) => ({
+      ...item,
+      profileImageUrl: item.profileImageUrl ?? item.profile_image_url ?? null,
+    })));
   }, [comments]);
 
   useEffect(() => {
@@ -141,6 +145,7 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
       const newReply = res.data.comment;
+      newReply.profileImageUrl = newReply.profileImageUrl ?? newReply.profile_image_url ?? null;
       newReply.author = newReply.author ?? member?.nickname;
       setLocalComments((prev) => prev.map((c) =>
         c.commentId === parentCommentId
@@ -192,7 +197,11 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
               onClick={(event) => handleAuthorNavigation(event, commentProfileLink)}
               style={commentProfileLink ? { cursor: 'pointer' } : {}}
             >
-              {item.author?.[0] ?? '?'}
+              {item.profileImageUrl ? (
+                <img src={item.profileImageUrl} alt={item.author || '프로필'} />
+              ) : (
+                item.author?.[0] ?? '?'
+              )}
             </div>
             <div>
               <strong
@@ -306,7 +315,7 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
               onClick={(event) => handleAuthorNavigation(event, postProfileLink)}
               style={postProfileLink ? { cursor: 'pointer' } : {}}
             >
-              {post.avatar}
+              <img src={post.profileImageUrl || defaultAvatarSrc} alt={post.author || '프로필'} />
             </div>
             <div>
               <strong
@@ -326,7 +335,6 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
         <div className={styles.body}>
           <section className={styles.postSection}>
             <p className={styles.postText}>{post.text}</p>
-            <HashtagRow tags={post.tags} variant="modal" />
             {post.imageSrc ? (
               <div
                 className={styles.postImageArea}
@@ -339,6 +347,7 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
                 <img className={styles.detailPostImage} src={post.imageSrc} alt={post.imageAlt ?? post.author} />
               </div>
             ) : null}
+            <HashtagRow tags={post.tags} variant="modal" />
             <div className={styles.actionRow} aria-label="게시글 반응 영역">
               <button
                 type="button"

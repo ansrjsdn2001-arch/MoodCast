@@ -74,6 +74,16 @@
   font-weight: 800;
 }
 
+.avatar img,
+.commentAvatar img,
+.replyAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
 .avatar {
   width: 44px;
   height: 44px;
@@ -111,19 +121,25 @@
 .postImageArea {
   width: 100%;
   max-width: 100%;
-  height: 320px;
-  overflow: hidden;
+  min-height: 200px;
+  max-height: 65vh;
   border-radius: 18px;
-  background: #000;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
 }
 
 .detailPostImage {
   display: block;
-  width: 100%;
-  height: 100%;
-  max-width: 100%;
+  width: auto;
+  height: auto;
+  max-width: 95%;
+  max-height: 65vh;
   object-fit: contain;
   object-position: center;
+  border-radius: 12px;
 }
 
 .actionRow {

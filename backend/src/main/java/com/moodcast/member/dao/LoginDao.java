@@ -16,7 +16,8 @@ public interface LoginDao {
 
     int updateMemberProfile(@Param("memberId") Long memberId,
                              @Param("nickname") String nickname,
-                             @Param("bio") String bio);
+                             @Param("bio") String bio,
+                             @Param("profileImageUrl") String profileImageUrl);
 
     // 팔로우 관련
     int isFollowing(@Param("followerId") Long followerId, @Param("followingId") Long followingId);

@@ -17,4 +17,5 @@ public class PostDetail {
     private Long saves;
     private Boolean likedByMe;
     private Boolean savedByMe;
+    private String profileImageUrl;
 }

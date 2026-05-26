@@ -11,6 +11,7 @@ public class CommentSummary {
     private Long postId;
     private Long memberId;
     private String author;
+    private String profileImageUrl;
     private String content;
     private String createdAt;
     private Long parentCommentId;

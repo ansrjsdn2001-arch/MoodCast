@@ -16,4 +16,5 @@ public class PostSummary {
     private Long comments;
     private Boolean likedByMe;
     private Boolean savedByMe;
+    private String profileImageUrl;
 }

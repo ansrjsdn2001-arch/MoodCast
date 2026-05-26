@@ -74,13 +74,16 @@ export function MobileFeedPage() {
         const items = response.data?.results || [];
         setPosts(items.map((item) => ({
           id: item.postId,
+          postId: item.postId,
           memberId: item.memberId ?? item.member_id,
           profileLink: (item.memberId ?? item.member_id) ? `/app/user/${item.memberId ?? item.member_id}` : null,
           title: item.title,
           author: item.author,
+          profileImageUrl: item.profileImageUrl ?? item.profile_image_url ?? null,
           avatar: item.author ? item.author.charAt(0).toUpperCase() : '?',
           time: formatTime(item.createdAt),
           text: normalizeContent(item.content),
+          content: item.content,
           emotionId: item.emotionId,
           comments: item.comments ?? item.commentsCount ?? 0,
           commentsList: item.commentsList ?? [],

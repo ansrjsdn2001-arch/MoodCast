@@ -62,9 +62,14 @@
 
     <update id="updateMemberProfile">
         update members
-        set nickname = #{nickname},
+        <set>
+            nickname = #{nickname},
             bio = #{bio},
+            <if test="profileImageUrl != null">
+                profile_image_url = #{profileImageUrl},
+            </if>
             updated_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
+        </set>
         where member_id = #{memberId}
     </update>
 

@@ -5,7 +5,9 @@ import { useIsDesktop } from '../../hooks/useViewportWidth';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { defaultAvatarSrc } from '../../shared/lib/defaultAvatar';
 import styles from './ProfileEditPage.module.css';
+import { uploadImage } from '../../shared/lib/uploadImage';
 
 const defaultProfile = {
   nickname: 'Lena_Parks',
@@ -18,6 +20,8 @@ export function ProfileEditPage() {
   const { member, accessToken, setAuthData } = useAuthStore();
   const [profile, setProfile] = useState(defaultProfile);
   const [photoPreview, setPhotoPreview] = useState(null);
+  const [profileImageUrl, setProfileImageUrl] = useState(null); // 서버 저장된 URL
+  const [photoUploading, setPhotoUploading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,6 +33,10 @@ export function ProfileEditPage() {
       nickname: member.nickname || prev.nickname,
       bio: member.bio || prev.bio,
     }));
+    if (member.profileImageUrl) {
+      setPhotoPreview(member.profileImageUrl);
+      setProfileImageUrl(member.profileImageUrl);
+    }
   }, [member]);
 
   const handleInput = (event) => {
@@ -40,14 +48,32 @@ export function ProfileEditPage() {
     setSaved(false);
   };
 
-  const handlePhotoChange = (event) => {
+  const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
+
+  const handlePhotoChange = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    // 즉시 미리보기
     setPhotoPreview(URL.createObjectURL(file));
     setSaved(false);
+    // 서버에 업로드
+    setPhotoUploading(true);
+    try {
+      const effectiveToken = accessToken || window.sessionStorage.getItem('moodcast-access-token');
+      const url = await uploadImage(file, effectiveToken, BACKSERVER, {
+        maxWidth: 320,
+        maxHeight: 320,
+        quality: 0.9,
+        cropSquare: true,
+      });
+      setProfileImageUrl(url);
+    } catch (err) {
+      setErrorMessage(`프로필 사진 업로드 실패: ${err.message}`);
+      setPhotoPreview(null);
+    } finally {
+      setPhotoUploading(false);
+    }
   };
-
-  const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
   // [저장 버튼 클릭 시 실행되는 함수]
   const handleSave = () => {
@@ -69,8 +95,9 @@ export function ProfileEditPage() {
 
     // 3. 백엔드로 보낼 데이터 구성
     const requestBody = {
-      nickname: newNickname, // 수정한 닉네임
-      bio: profile.bio,      // 수정한 자기소개
+      nickname: newNickname,
+      bio: profile.bio,
+      ...(profileImageUrl && { profileImageUrl }), // 업로드된 경우에만 포함
     };
 
     console.log('프로필 저장 요청', { requestBody, accessToken });
@@ -130,7 +157,7 @@ export function ProfileEditPage() {
       <div className={styles.card}>
         <div className={styles.avatarWrap}>
           <div className={styles.avatar}>
-            {photoPreview ? <img src={photoPreview} alt="프로필 사진 미리보기" /> : profile.nickname.charAt(0).toUpperCase()}
+            <img src={photoPreview || profileImageUrl || defaultAvatarSrc} alt="프로필 사진 미리보기" />
           </div>
           <label className={styles.uploadButton}>
             사진 변경
@@ -162,11 +189,11 @@ export function ProfileEditPage() {
         </div>
 
         <div className={styles.buttonRow}>
-          <button type="button" className={styles.backButton} onClick={handleBack} disabled={loading}>
+          <button type="button" className={styles.backButton} onClick={handleBack} disabled={loading || photoUploading}>
             취소
           </button>
-          <button type="button" className={styles.saveButton} onClick={handleSave} disabled={loading}>
-            {loading ? '저장 중...' : '완료'}
+          <button type="button" className={styles.saveButton} onClick={handleSave} disabled={loading || photoUploading}>
+            {photoUploading ? '사진 업로드 중...' : loading ? '저장 중...' : '완료'}
           </button>
         </div>
 
