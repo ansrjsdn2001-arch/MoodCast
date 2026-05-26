@@ -35,6 +35,7 @@ export function EditPostPage() {
   const [tagList, setTagList] = useState([]);
   const [tagInput, setTagInput] = useState('');
   const [selectedEmotion, setSelectedEmotion] = useState(null);
+  const [attachedImages, setAttachedImages] = useState([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const { accessToken: token } = useAuthStore();
@@ -60,6 +61,7 @@ export function EditPostPage() {
         if (editorRef.current) {
           editorRef.current.innerHTML = post.content || '';
         }
+        setAttachedImages(getImageUrlsFromHtml(post.content || ''));
         
         // 태그 파싱 (공백으로 구분된 문자열을 배열로 변환)
         if (post.tags) {
@@ -114,6 +116,7 @@ export function EditPostPage() {
         const imgHtml = `<img src="${url}" alt="${file.name}" class="${styles.editorImage}" />`;
         const el = document.getElementById(tempId);
         if (el) el.outerHTML = imgHtml;
+        setAttachedImages(getImageUrlsFromHtml(editor.innerHTML));
       } catch (err) {
         const el = document.getElementById(tempId);
         if (el) el.remove();
@@ -151,8 +154,40 @@ export function EditPostPage() {
     }
   };
 
+  const getImageUrlsFromHtml = (html) => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html || '', 'text/html');
+    return Array.from(doc.querySelectorAll('img'))
+      .map((img) => img.getAttribute('src'))
+      .filter(Boolean);
+  };
+
+  const updateEditorContent = (html) => {
+    if (editorRef.current) {
+      editorRef.current.innerHTML = html;
+    }
+    setContent(html);
+    setAttachedImages(getImageUrlsFromHtml(html));
+  };
+
+  const getFileNameFromUrl = (url) => {
+    if (!url) return '이미지';
+    const cleaned = url.split('?')[0].split('/').pop() || '이미지';
+    return cleaned.length > 18 ? `${cleaned.slice(0, 15)}...` : cleaned;
+  };
+
   const handleRemoveTag = (indexToRemove) => {
     setTagList(tagList.filter((_, index) => index !== indexToRemove));
+  };
+
+  const handleImageRemove = (indexToRemove) => {
+    if (!editorRef.current) return;
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(editorRef.current.innerHTML, 'text/html');
+    const images = Array.from(doc.querySelectorAll('img'));
+    if (!images[indexToRemove]) return;
+    images[indexToRemove].remove();
+    updateEditorContent(doc.body.innerHTML);
   };
 
   const handleSubmit = async () => {
@@ -266,6 +301,30 @@ export function EditPostPage() {
             </label>
             <span className={styles.uploadDescription}>본문에 들어갈 사진을 선택하세요.</span>
           </div>
+
+          {attachedImages.length > 0 && (
+            <div className={styles.imageList}>
+              <strong>첨부된 사진</strong>
+              <div className={styles.imageGrid}>
+                {attachedImages.map((src, index) => (
+                  <div key={`${src}-${index}`} className={styles.imageItem}>
+                    <div className={styles.imageThumbWrap}>
+                      <img src={src} alt={`첨부 이미지 ${index + 1}`} className={styles.imageThumb} />
+                      <button
+                        type="button"
+                        className={styles.imageRemoveButton}
+                        onClick={() => handleImageRemove(index)}
+                        aria-label={`첨부 이미지 ${index + 1} 삭제`}
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <div className={styles.imageName}>{getFileNameFromUrl(src)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className={styles.field}>
