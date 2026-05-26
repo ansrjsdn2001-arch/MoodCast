@@ -3,8 +3,14 @@ import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
-import { useState } from 'react';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import ShareIcon from '@mui/icons-material/Share';
+import FlagIcon from '@mui/icons-material/Flag';
+import { useState, useRef, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../hooks/useAuthStore';
 import { CommentModal } from './CommentModal';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import styles from './FeedCard.module.css';
@@ -59,13 +65,30 @@ function MoodVisual({ emotionId }) {
 
 export function FeedCard({ post, compact = false }) {
   const navigate = useNavigate();
-  const currentUser = 'Sarah Kim';
+  const { member } = useAuthStore();
+  
+  // member.nickname으로 비교 (post.author는 nickname 값)
+  const currentUser = member?.nickname || '';
   const isOwner = post.author === currentUser;
+  
   const [selectedPost, setSelectedPost] = useState(null);
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   const [comments, setComments] = useState(post.commentsList ?? []);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const moreButtonRef = useRef(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClickOutside = (e) => {
+      if (moreButtonRef.current && !moreButtonRef.current.contains(e.target)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [menuOpen]);
   const imageSrc = post.imageSrc ?? post.image ?? post.cover ?? post.thumbnail;
 
   const openCommentModal = () => {
@@ -79,7 +102,14 @@ export function FeedCard({ post, compact = false }) {
   };
 
   const toggleMenu = () => {
-    setMenuOpen((prev) => !prev);
+    if (!menuOpen && moreButtonRef.current) {
+      const rect = moreButtonRef.current.getBoundingClientRect();
+      setMenuPos({
+        top: rect.bottom + window.scrollY + 4,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setMenuOpen(!menuOpen);
   };
 
   const postId = post.id ?? post.postId;
@@ -97,6 +127,29 @@ export function FeedCard({ post, compact = false }) {
   const handleDelete = () => {
     setMenuOpen(false);
     setDeleteModalOpen(true);
+  };
+
+  const handleShare = () => {
+    setMenuOpen(false);
+    // 공유 기능 구현
+    if (navigator.share) {
+      navigator.share({
+        title: post.title || '게시물',
+        text: post.text,
+      });
+    } else {
+      console.log('공유 기능이 지원되지 않습니다');
+    }
+  };
+
+  const handleSave = () => {
+    setMenuOpen(false);
+    console.log('Save post', postId);
+  };
+
+  const handleReport = () => {
+    setMenuOpen(false);
+    console.log('Report post', postId);
   };
 
   const closeDeleteModal = () => {
@@ -125,23 +178,60 @@ export function FeedCard({ post, compact = false }) {
               )}
             </div>
           </div>
-          {isOwner ? (
-            <div className={styles.moreWrapper}>
-              <button type="button" className={styles.more} onClick={toggleMenu} aria-label="더보기">
-                <MoreHorizIcon />
-              </button>
-              {menuOpen ? (
-                <div className={styles.moreMenu}>
-                  <button type="button" className={styles.menuItem} onClick={handleEdit}>
-                    수정
-                  </button>
-                  <button type="button" className={styles.menuItem} onClick={handleDelete}>
-                    삭제
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
+          {/* 메뉴 버튼 - 모든 사용자 표시 */}
+          <div className={styles.moreWrapper}>
+            <button 
+              ref={moreButtonRef}
+              type="button" 
+              className={styles.more} 
+              onClick={toggleMenu} 
+              aria-label="더보기"
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              <MoreHorizIcon />
+            </button>
+            {/* SNS처럼 자연스럽게 떠오르는 메뉴 - Portal로 body에 렌더링하여 overflow 문제 해결 */}
+            {menuOpen && ReactDOM.createPortal(
+              <div 
+                className={styles.moreMenu} 
+                style={{ top: menuPos.top, right: menuPos.right }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* 작성자만 수정/삭제 가능 */}
+                {isOwner && (
+                  <>
+                    <button type="button" className={styles.menuItem} onClick={handleEdit}>
+                      <EditIcon className={styles.menuIcon} />
+                      수정
+                    </button>
+                    <button type="button" className={`${styles.menuItem} ${styles.menuItemDanger}`} onClick={handleDelete}>
+                      <DeleteOutlineIcon className={styles.menuIcon} />
+                      삭제
+                    </button>
+                  </>
+                )}
+                {/* 작성자 아닐 때만 저장/신고 가능 */}
+                {!isOwner && (
+                  <>
+                    <button type="button" className={styles.menuItem} onClick={handleSave}>
+                      <BookmarkBorderIcon className={styles.menuIcon} />
+                      저장
+                    </button>
+                    <button type="button" className={`${styles.menuItem} ${styles.menuItemDanger}`} onClick={handleReport}>
+                      <FlagIcon className={styles.menuIcon} />
+                      신고
+                    </button>
+                  </>
+                )}
+                {/* 모든 사용자가 사용 가능 */}
+                <button type="button" className={styles.menuItem} onClick={handleShare}>
+                  <ShareIcon className={styles.menuIcon} />
+                  공유
+                </button>
+              </div>,
+              document.body
+            )}
+          </div>
         </div>
 
         {post.title && <p className={styles.title}>{post.title}</p>}
