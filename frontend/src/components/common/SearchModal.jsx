@@ -66,31 +66,54 @@ export function SearchModal({ open, onClose }) {
 
   const normalizeContent = (content) => {
     if (!content) return '';
-    return content.replace(/<[^>]+>/g, '').trim();
+    // HTML 태그 제거
+    let text = content.replace(/<[^>]+>/g, '').trim();
+    // HTML 엔티티 디코딩
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
   };
 
   const formatTime = (dateString) => {
+    // 시간 정보가 없으면 '방금'이라고 표시함
     if (!dateString) return '방금';
+    
+    // 서버에서 받은 시간 문자열을 JavaScript Date 객체로 변환함
     const date = new Date(dateString);
+    // 현재 시간을 Date 객체로 가져옴
     const now = new Date();
-    const diffMs = now - date;
+    
+    // 현재 시간과 게시글 작성 시간의 차이를 계산함
+    // getTime()은 1970년 1월 1일 00:00:00부터 지난 밀리초를 반환함
+    const diffMs = now.getTime() - date.getTime();
+    
+    // 밀리초 차이를 분으로 변환함 (1분 = 60000밀리초)
     const diffMins = Math.floor(diffMs / 60000);
+    // 밀리초 차이를 시간으로 변환함 (1시간 = 3600000밀리초)
     const diffHours = Math.floor(diffMs / 3600000);
+    // 밀리초 차이를 일로 변환함 (1일 = 86400000밀리초)
     const diffDays = Math.floor(diffMs / 86400000);
 
+    // 1분 이내면 '방금'으로 표시함
     if (diffMins < 1) return '방금';
+    // 1분 이상 60분 미만이면 '~분 전'으로 표시함
     if (diffMins < 60) return `${diffMins}분 전`;
+    // 1시간 이상 24시간 미만이면 '~시간 전'으로 표시함
     if (diffHours < 24) return `${diffHours}시간 전`;
+    // 1일 이상 7일 미만이면 '~일 전'으로 표시함
     if (diffDays < 7) return `${diffDays}일 전`;
     
-    // 한국 시간대(Asia/Seoul)로 포맷팅
+    // 7일 이상 지나면 정확한 날짜와 시간을 표시함
+    // Intl.DateTimeFormat은 다양한 언어와 지역에 맞게 날짜를 포맷팅함
+    // timeZone: 'Asia/Seoul'로 설정하여 한국 시간대로 표시함
+    // (예: 2026.05.26 13:45)
     return new Intl.DateTimeFormat('ko-KR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'Asia/Seoul'
+      year: 'numeric',           // 연도를 숫자로 표시함 (예: 2026)
+      month: '2-digit',          // 월을 2자리 숫자로 표시함 (예: 05)
+      day: '2-digit',            // 일을 2자리 숫자로 표시함 (예: 26)
+      hour: '2-digit',           // 시간을 2자리 숫자로 표시함 (예: 13)
+      minute: '2-digit',         // 분을 2자리 숫자로 표시함 (예: 45)
+      timeZone: 'Asia/Seoul'     // 한국 시간대(UTC+9)로 설정함
     }).format(date);
   };
 
