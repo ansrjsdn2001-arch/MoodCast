@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
 import PhoneRoundedIcon from "@mui/icons-material/PhoneRounded";
@@ -76,6 +77,16 @@ function ChatBody({ desktop, onRoomOpenChange }) {
   }, [messages]);
 
   const handleIncomingMessage = (incomingMessage) => {
+    if (incomingMessage?.eventType === "CHAT_DELETE") {
+      const deletedChatId = Number(incomingMessage.chatId ?? incomingMessage.id);
+
+      setMessages((previousMessages) =>
+        previousMessages.filter((item) => Number(item.id) !== deletedChatId),
+      );
+      loadThreads();
+      return;
+    }
+
     if (incomingMessage?.eventType === "READ_RECEIPT") {
       const readerId = Number(incomingMessage.receiverId);
 
@@ -174,9 +185,9 @@ function ChatBody({ desktop, onRoomOpenChange }) {
 
       setThreads(nextThreads);
     } catch (requestError) {
-      console.error("채팅 리스트 조회 실패", requestError);
+      console.error("채팅 리스트議고쉶 ?ㅽ뙣", requestError);
       setThreads([]);
-      setError("채팅 리스트를 불러오지 못했습니다.");
+      setError("梨꾪똿 由ъ뒪?몃? 遺덈윭?ㅼ? 紐삵뻽?듬땲??");
     } finally {
       setIsLoadingThreads(false);
     }
@@ -259,8 +270,8 @@ function ChatBody({ desktop, onRoomOpenChange }) {
 
     const partnerThread = {
       partnerMemberId: initialPartnerId,
-      partnerName: initialPartnerName || `회원 ${initialPartnerId}`,
-      partnerNickname: initialPartnerName || `회원 ${initialPartnerId}`,
+      partnerName: initialPartnerName || `?뚯썝 ${initialPartnerId}`,
+      partnerNickname: initialPartnerName || `?뚯썝 ${initialPartnerId}`,
       partnerProfileImageUrl: "",
       lastMessage: "",
       lastMessageAt: "",
@@ -328,6 +339,29 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     setMessage("");
     setShowScrollBottomButton(false);
     loadMessages(thread);
+  };
+
+  const handleDeleteMessage = async (item) => {
+    if (!currentMemberId || !item?.id) {
+      return;
+    }
+
+    try {
+      await axios.post(`${API_BASE}/chat/messages/delete`, null, {
+        params: {
+          chatId: item.id,
+          memberId: currentMemberId,
+        },
+      });
+
+      setMessages((previousMessages) =>
+        previousMessages.filter((message) => Number(message.id) !== Number(item.id)),
+      );
+      await loadThreads();
+    } catch (requestError) {
+      console.error("메시지 삭제 실패", requestError);
+      setError("메시지 삭제 중 문제가 발생했습니다.");
+    }
   };
 
   const handleExitRoom = () => {
@@ -401,7 +435,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
         <p className={styles.statusText}>채팅 리스트를 불러오는 중입니다.</p>
       ) : null}
       {!isLoadingThreads && threads.length === 0 ? (
-        <p className={styles.emptyState}>대화 중인 채팅방이 없습니다.</p>
+        <p className={styles.emptyState}>아직 대화 중인 채팅방이 없습니다.</p>
       ) : null}
       {threads.map((thread) => (
         <button
@@ -470,6 +504,15 @@ function ChatBody({ desktop, onRoomOpenChange }) {
                 <span className={styles.senderLabel}>{partnerName}</span>
               ) : null}
               <div className={styles.bubbleWrap}>
+                <button
+                  type="button"
+                  className={styles.deleteButton}
+                  aria-label="메시지 삭제"
+                  title="메시지 삭제"
+                  onClick={() => handleDeleteMessage(item)}
+                >
+                  <DeleteOutlineRoundedIcon />
+                </button>
                 <div className={styles.bubbleLine}>
                   {isUnreadByReceiver ? (
                     <span className={styles.unreadMarker}>1</span>
@@ -508,8 +551,8 @@ function ChatBody({ desktop, onRoomOpenChange }) {
         <button
           type="button"
           className={styles.emojiButton}
-          aria-label="이모티콘"
-          title="이모티콘"
+          aria-label="이모지"
+          title="이모지"
           disabled={!activeThread}
         >
           <SentimentSatisfiedAltRoundedIcon />
@@ -541,7 +584,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
         <div className={styles.headerAvatar}>{partnerInitial}</div>
         <div className={styles.roomTitle}>
           <strong>{partnerName}</strong>
-          <span>{isChatConnected ? "활동중일걸?" : "아닌가?"}</span>
+          <span>{isChatConnected ? "실시간 연결됨" : "연결되지 않음"}</span>
         </div>
         <div className={styles.headerActions}>
           <button type="button" aria-label="전화">
@@ -628,3 +671,5 @@ export function MoodChatPage() {
     </DesktopShell>
   );
 }
+
+
