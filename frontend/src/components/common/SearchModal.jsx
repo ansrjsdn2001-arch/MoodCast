@@ -17,7 +17,7 @@ export function SearchModal({ open, onClose }) {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const { member: currentMember, accessToken: token } = useAuthStore();
+  const { member: currentMember, accessToken: token, isLoggedIn } = useAuthStore();
   // 백엔드 서버 주소를 여기에서 설정합니다.
   // 개발 환경에서는 VITE_BACKSERVER 환경 변수를 사용하고,
   // 없으면 로컬 백엔드 주소를 기본값으로 사용합니다.
@@ -99,7 +99,7 @@ export function SearchModal({ open, onClose }) {
       .finally(() => {
         setLoading(false);
       });
-  }, [activeTab, query, open]);
+  }, [activeTab, query, open, token]);
 
   if (!open) return null;
 
@@ -190,7 +190,7 @@ export function SearchModal({ open, onClose }) {
                           @{item.email ? item.email.split('@')[0] : item.memberId}
                         </span>
                       </div>
-                      {currentMember?.memberId !== item.memberId && (
+                      {isLoggedIn && currentMember?.memberId !== item.memberId && (
                         <button
                           type="button"
                           onClick={(event) => {

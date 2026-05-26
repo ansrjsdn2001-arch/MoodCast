@@ -23,7 +23,7 @@ export function ProfilePage() {
     savedCount: 0
   });
   
-  const { member: currentMember, accessToken: token } = useAuthStore();
+  const { member: currentMember, accessToken: token, isLoggedIn } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
   // 실제 조회할 ID 결정 (파라미터 없으면 내 ID)
@@ -156,7 +156,7 @@ export function ProfilePage() {
           >
             프로필 편집
           </button>
-        ) : (
+        ) : isLoggedIn ? (
           <div className={styles.actionsRich}>
             <button 
               type="button" 
@@ -167,7 +167,7 @@ export function ProfilePage() {
             </button>
             <button type="button" className={styles.chatBtn} onClick={handleChatClick}>채팅하기</button>
           </div>
-        )}
+        ) : null}
       </article>
 
       {/* 통계 섹션 - 실제 데이터 적용 */}

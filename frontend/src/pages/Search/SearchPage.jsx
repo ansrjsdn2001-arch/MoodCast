@@ -17,7 +17,7 @@ export function SearchPage() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const { member: currentMember, accessToken: token } = useAuthStore();
+  const { member: currentMember, accessToken: token, isLoggedIn } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
   // 검색어 또는 탭이 바뀌면 백엔드에 검색 요청을 다시 보냅니다.
@@ -141,7 +141,7 @@ export function SearchPage() {
                         @{item.email ? item.email.split('@')[0] : item.memberId}
                       </span>
                     </div>
-                    {currentMember?.memberId !== item.memberId && (
+                    {isLoggedIn && currentMember?.memberId !== item.memberId && (
                       <button
                         type="button"
                         onClick={(event) => {
