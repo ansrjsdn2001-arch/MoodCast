@@ -2,6 +2,9 @@ package com.moodcast.post.vo;
 
 import lombok.Data;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Data
 public class CommentSummary {
     private Long commentId;
@@ -10,4 +13,6 @@ public class CommentSummary {
     private String author;
     private String content;
     private String createdAt;
+    private Long parentCommentId;
+    private List<CommentSummary> replies = new ArrayList<>();
 }

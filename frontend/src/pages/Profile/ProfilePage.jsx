@@ -32,6 +32,7 @@ export function ProfilePage() {
 
   // 실제 조회할 ID 결정 (파라미터 없으면 내 ID)
   const targetId = sanitizedHandle || currentMember?.memberId;
+  const waitingForAuth = !sanitizedHandle && token && !currentMember;
 
   // 팔로우 상태 및 카운트 조회 함수
   const fetchFollowStatus = useCallback(() => {
@@ -59,6 +60,9 @@ export function ProfilePage() {
 
   useEffect(() => {
     if (!targetId) {
+      if (waitingForAuth) {
+        return;
+      }
       setLoading(false);
       return;
     }
@@ -79,10 +83,13 @@ export function ProfilePage() {
       .finally(() => {
         setLoading(false);
       });
-  }, [targetId, BACKSERVER, fetchFollowStatus]);
+  }, [targetId, BACKSERVER, fetchFollowStatus, waitingForAuth]);
 
   useEffect(() => {
     if (!targetId) {
+      if (waitingForAuth) {
+        return;
+      }
       setPosts([]);
       setPostsLoading(false);
       return;
@@ -105,9 +112,11 @@ export function ProfilePage() {
       .finally(() => {
         setPostsLoading(false);
       });
-  }, [targetId, BACKSERVER]);
+  }, [targetId, BACKSERVER, waitingForAuth]);
 
-  const isOwnProfile = currentMember && String(currentMember.memberId) === String(targetId);
+  // 자신의 프로필인지 확인 (user.memberId가 있으면 그것을 우선 사용, 없으면 currentMember 사용)
+  const isOwnProfile = (user?.memberId && currentMember?.memberId && String(user.memberId) === String(currentMember.memberId)) ||
+                       (currentMember && String(currentMember.memberId) === String(targetId));
 
   const normalizeContent = (content) => {
     if (!content) return '';
@@ -183,6 +192,7 @@ export function ProfilePage() {
       vibes: item.vibes ?? item.vibesCount ?? 0,
       likedByMe: item.likedByMe,
       savedByMe: item.savedByMe,
+      tags: item.tags ?? '',
       previewComment: null,
       postId: item.postId,
     };

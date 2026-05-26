@@ -6,14 +6,20 @@ import { useRef, useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '../../stores/useAuthStore';
 import styles from './EditPostPage.module.css';
+import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
+import SentimentDissatisfiedIcon from '@mui/icons-material/SentimentDissatisfied';
+import SpaIcon from '@mui/icons-material/Spa';
+import MoodBadIcon from '@mui/icons-material/MoodBad';
+import CelebrationIcon from '@mui/icons-material/Celebration';
+import SentimentNeutralIcon from '@mui/icons-material/SentimentNeutral';
 
 const EMOTIONS = [
-  { id: 1, name: '행복', emoji: '😊', color: '#FFD700' },
-  { id: 2, name: '슬픔', emoji: '😢', color: '#4A90E2' },
-  { id: 3, name: '차분함', emoji: '😌', color: '#F4A460' },
-  { id: 4, name: '화남', emoji: '😠', color: '#E74C3C' },
-  { id: 5, name: '신나감', emoji: '🤩', color: '#FF69B4' },
-  { id: 6, name: '무감정', emoji: '😐', color: '#95A5A6' },
+  { id: 1, name: '행복', icon: EmojiEmotionsIcon, color: '#FFD700' },
+  { id: 2, name: '슬픔', icon: SentimentDissatisfiedIcon, color: '#4A90E2' },
+  { id: 3, name: '차분함', icon: SpaIcon, color: '#F4A460' },
+  { id: 4, name: '화남', icon: MoodBadIcon, color: '#E74C3C' },
+  { id: 5, name: '신남', icon: CelebrationIcon, color: '#FF69B4' },
+  { id: 6, name: '무감정', icon: SentimentNeutralIcon, color: '#95A5A6' },
 ];
 
 export function EditPostPage() {
@@ -207,18 +213,21 @@ export function EditPostPage() {
         <div className={styles.field}>
           <label>오늘의 감정</label>
           <div className={styles.emotionGrid}>
-            {EMOTIONS.map((emotion) => (
-              <button
-                key={emotion.id}
-                type="button"
-                className={`${styles.emotionButton} ${selectedEmotion?.id === emotion.id ? styles.emotionSelected : ''}`}
-                onClick={() => setSelectedEmotion(emotion)}
-                style={selectedEmotion?.id === emotion.id ? { borderColor: emotion.color, backgroundColor: emotion.color + '20' } : {}}
-              >
-                <span className={styles.emotionEmoji}>{emotion.emoji}</span>
-                <span className={styles.emotionName}>{emotion.name}</span>
-              </button>
-            ))}
+            {EMOTIONS.map((emotion) => {
+              const IconComponent = emotion.icon;
+              return (
+                <button
+                  key={emotion.id}
+                  type="button"
+                  className={`${styles.emotionButton} ${selectedEmotion?.id === emotion.id ? styles.emotionSelected : ''}`}
+                  onClick={() => setSelectedEmotion(emotion)}
+                  style={selectedEmotion?.id === emotion.id ? { borderColor: emotion.color, backgroundColor: emotion.color + '20' } : {}}
+                >
+                  <IconComponent sx={{ fontSize: '1.8rem', color: emotion.color }} />
+                  <span className={styles.emotionName}>{emotion.name}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 

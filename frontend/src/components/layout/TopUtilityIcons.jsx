@@ -112,7 +112,11 @@ export function TopUtilityIcons({ onSearch }) {
             <div className={styles.menu} ref={menuRef}>
               <button type="button" onClick={() => {
                 setMenuOpen(false);
-                navigate(`/app/user/${member.memberId}`);
+                if (member?.memberId) {
+                  navigate(`/app/user/${member.memberId}`);
+                } else {
+                  navigate('/app/profile');
+                }
               }}>
                 <AccountCircleOutlinedIcon />
                 프로필 보기

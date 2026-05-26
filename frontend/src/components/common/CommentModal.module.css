@@ -184,6 +184,118 @@
   background: #f8f9ff;
 }
 
+.itemHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.commentMenuWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.commentMenuBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+}
+
+.commentMenuBtn:hover {
+  color: #374151;
+  background: #f3f4f6;
+}
+
+.commentMenu {
+  position: absolute;
+  right: 0;
+  top: 28px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  z-index: 100;
+  min-width: 100px;
+  overflow: hidden;
+}
+
+.commentMenu button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.88rem;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.commentMenu button:hover {
+  background: #f9fafb;
+}
+
+.commentMenu .danger {
+  color: #ef4444;
+}
+
+.commentText {
+  margin: 10px 0 0;
+  color: #111827;
+  line-height: 1.5;
+}
+
+.editArea {
+  margin-top: 10px;
+}
+
+.editInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1.5px solid #6366f1;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  resize: none;
+  outline: none;
+}
+
+.editActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.editCancel {
+  padding: 5px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.84rem;
+  color: #6b7280;
+}
+
+.editSave {
+  padding: 5px 14px;
+  border: none;
+  border-radius: 8px;
+  background: #6366f1;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
 .meta {
   display: flex;
   gap: 12px;

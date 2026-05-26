@@ -9,6 +9,12 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ShareIcon from '@mui/icons-material/Share';
 import FlagIcon from '@mui/icons-material/Flag';
+import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
+import SentimentDissatisfiedIcon from '@mui/icons-material/SentimentDissatisfied';
+import SpaIcon from '@mui/icons-material/Spa';
+import MoodBadIcon from '@mui/icons-material/MoodBad';
+import CelebrationIcon from '@mui/icons-material/Celebration';
+import SentimentNeutralIcon from '@mui/icons-material/SentimentNeutral';
 import { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { useNavigate } from 'react-router-dom';
@@ -16,61 +22,65 @@ import axios from 'axios';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { CommentModal } from './CommentModal';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { HashtagRow } from './HashtagRow';
 import styles from './FeedCard.module.css';
 
 const EMOTIONS = {
   1: { 
     name: '행복', 
-    emoji: '🥰',
+    icon: EmojiEmotionsIcon,
     color: '#FFD700', 
     quote: '오늘의 이 행복한 순간을 박제해 볼까요?' 
   },
   2: { 
     name: '슬픔', 
-    emoji: '🥺',
+    icon: SentimentDissatisfiedIcon,
     color: '#4A90E2', 
     quote: '무슨 일이 있었나요? 마음속 이야기를 털어놓아도 좋아요.' 
   },
   3: { 
     name: '차분함', 
-    emoji: '😌', 
+    icon: SpaIcon, 
     color: '#F4A460', 
     quote: '잔잔하고 평온한 지금 이 느낌을 그대로 적어보세요.' 
   },
   4: { 
     name: '화남', 
-    emoji: '😤',
+    icon: MoodBadIcon,
     color: '#E74C3C', 
     quote: '답답하고 화나는 마음, 여기에 다 쏟아내고 털어버려요!' 
   },
   5: { 
     name: '신남',
-    emoji: '🤪', 
+    icon: CelebrationIcon, 
     color: '#FF69B4', 
     quote: '텐션 업! 얼마나 짜릿하고 신나는 일인가요?' 
   },
   6: { 
     name: '무감정', 
-    emoji: '🫥', 
+    icon: SentimentNeutralIcon, 
     color: '#95A5A6', 
     quote: '아무 생각 없는 날도 있죠. 멍하니 흘러간 하루를 기록해요.' 
   }
 };
 function MoodVisual({ emotionId }) {
   const emotion = EMOTIONS[emotionId] || EMOTIONS[3]; // 기본값: Calm
+  const IconComponent = emotion.icon;
   return (
-    <div className={styles.moodCard} style={{ borderColor: emotion.color, backgroundColor: emotion.color + '15' }}>
-      <span className={styles.moodEmoji}>{emotion.emoji}</span>
-      <span className={styles.moodLabel}>{emotion.name}</span>
+    <div className={styles.moodCard} style={{ borderColor: emotion.color, backgroundColor: emotion.color + '18' }}>
+      <IconComponent sx={{ fontSize: '1rem', color: emotion.color }} />
+      <span style={{ fontSize: '0.78rem', fontWeight: 600, color: emotion.color }}>{emotion.name}</span>
     </div>
   );
 }
 
 export function FeedCard({ post, compact = false }) {
   const navigate = useNavigate();
-  const { member, accessToken } = useAuthStore();
+  const { member, accessToken: storeToken } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
-  
+  // Zustand store가 초기화 전일 경우 sessionStorage에서 직접 읽음
+  const accessToken = storeToken || window.sessionStorage.getItem('moodcast-access-token');
+
   // member.nickname으로 비교 (post.author는 nickname 값)
   const currentUser = member?.nickname || '';
   const isOwner = post.author === currentUser;
@@ -146,7 +156,7 @@ export function FeedCard({ post, compact = false }) {
     if (!menuOpen && moreButtonRef.current) {
       const rect = moreButtonRef.current.getBoundingClientRect();
       setMenuPos({
-        top: rect.bottom + window.scrollY + 4,
+        top: rect.bottom + 4,
         right: window.innerWidth - rect.right,
       });
     }
@@ -168,33 +178,30 @@ export function FeedCard({ post, compact = false }) {
   };
 
   const handleEdit = (event) => {
-    event.stopPropagation();
-    console.log('수정 버튼 클릭됨. postId:', postId);
+    event?.stopPropagation();
     setMenuOpen(false);
     navigate(`/app/post/edit/${postId}`);
   };
 
   const handleDelete = (event) => {
-    event.stopPropagation();
+    event?.stopPropagation();
     setMenuOpen(false);
     setDeleteModalOpen(true);
   };
 
   const handleShare = (event) => {
-    event.stopPropagation();
+    event?.stopPropagation();
     setMenuOpen(false);
     if (navigator.share) {
       navigator.share({
         title: post.title || '게시물',
         text: post.text,
       });
-    } else {
-      console.log('공유 기능이 지원되지 않습니다');
     }
   };
 
   const handleSave = async (event) => {
-    event.stopPropagation();
+    event?.stopPropagation();
     setMenuOpen(false);
     if (!accessToken) {
       alert('로그인이 필요합니다.');
@@ -221,7 +228,7 @@ export function FeedCard({ post, compact = false }) {
   };
 
   const handleReport = (event) => {
-    event.stopPropagation();
+    event?.stopPropagation();
     setMenuOpen(false);
     console.log('Report post', postId);
   };
@@ -271,6 +278,7 @@ export function FeedCard({ post, compact = false }) {
       if (typeof response.data.likes === 'number') {
         setLikesCount(response.data.likes);
       }
+      return { liked: response.data.liked, likes: response.data.likes };
     } catch (err) {
       console.error('좋아요 요청 실패:', err);
       alert('좋아요 처리에 실패했습니다.');
@@ -323,12 +331,7 @@ export function FeedCard({ post, compact = false }) {
             </strong>
             <div className={styles.metaRow}>
               <span>{timeLabel}</span>
-              {post.emotionId && (
-                <span className={styles.emotion}>
-                  <span className={styles.emotionEmoji}>{EMOTIONS[post.emotionId]?.emoji || EMOTIONS[3].emoji}</span>
-                  <span className={styles.emotionText}>{EMOTIONS[post.emotionId]?.name || EMOTIONS[3].name}</span>
-                </span>
-              )}
+              {post.emotionId && <MoodVisual emotionId={post.emotionId} />}
             </div>
           </div>
           {/* 메뉴 버튼 - 모든 사용자 표시 */}
@@ -353,11 +356,11 @@ export function FeedCard({ post, compact = false }) {
                 {/* 작성자만 수정/삭제 가능 */}
                 {isOwner && (
                   <>
-                    <button type="button" className={styles.menuItem} onClick={(e) => { console.log('수정 클릭'); handleEdit(); }}>
+                    <button type="button" className={styles.menuItem} onClick={(e) => handleEdit(e)}>
                       <EditIcon className={styles.menuIcon} />
                       수정
                     </button>
-                    <button type="button" className={`${styles.menuItem} ${styles.menuItemDanger}`} onClick={(e) => { console.log('삭제 클릭'); handleDelete(); }}>
+                    <button type="button" className={`${styles.menuItem} ${styles.menuItemDanger}`} onClick={(e) => handleDelete(e)}>
                       <DeleteOutlineIcon className={styles.menuIcon} />
                       삭제
                     </button>
@@ -366,18 +369,18 @@ export function FeedCard({ post, compact = false }) {
                 {/* 작성자 아닐 때만 저장/신고 가능 */}
                 {!isOwner && (
                   <>
-                    <button type="button" className={styles.menuItem} onClick={(e) => { console.log('저장 클릭'); handleSave(); }}>
+                    <button type="button" className={styles.menuItem} onClick={(e) => handleSave(e)}>
                       <BookmarkBorderIcon className={styles.menuIcon} />
                       저장
                     </button>
-                    <button type="button" className={`${styles.menuItem} ${styles.menuItemDanger}`} onClick={(e) => { console.log('신고 클릭'); handleReport(); }}>
+                    <button type="button" className={`${styles.menuItem} ${styles.menuItemDanger}`} onClick={(e) => handleReport(e)}>
                       <FlagIcon className={styles.menuIcon} />
                       신고
                     </button>
                   </>
                 )}
                 {/* 모든 사용자가 사용 가능 */}
-                <button type="button" className={styles.menuItem} onClick={(e) => { console.log('공유 클릭'); handleShare(); }}>
+                <button type="button" className={styles.menuItem} onClick={(e) => handleShare(e)}>
                   <ShareIcon className={styles.menuIcon} />
                   공유
                 </button>
@@ -388,6 +391,7 @@ export function FeedCard({ post, compact = false }) {
 
         {post.title && <p className={styles.title}>{post.title}</p>}
         <p className={styles.text}>{cardText}</p>
+        <HashtagRow tags={post.tags} variant="feed" />
         {imageSrc && (
           <div className={styles.postImageWrap} onClick={(e) => { e.stopPropagation(); handleCardClick(); }} style={{ cursor: 'pointer' }}>
             <img className={styles.postImage} src={imageSrc} alt={post.imageAlt ?? post.author} />
@@ -417,9 +421,9 @@ export function FeedCard({ post, compact = false }) {
             aria-label={liked ? '좋아요 취소' : '좋아요'}
           >
             {liked ? (
-              <FavoriteIcon className={styles.heart} />
+              <FavoriteIcon style={{ color: '#e74c3c' }} />
             ) : (
-              <FavoriteBorderIcon className={styles.heart} />
+              <FavoriteBorderIcon style={{ color: '#e74c3c' }} />
             )}
             {likesCount}
           </button>
@@ -457,6 +461,7 @@ export function FeedCard({ post, compact = false }) {
         comments={comments}
         onClose={closeCommentModal}
         onSubmit={handleCommentSubmit}
+        onLike={handleLike}
       />
       <DeleteConfirmModal
         open={deleteModalOpen}

@@ -160,4 +160,39 @@ public class PostController {
                 )
         );
     }
+
+    @PostMapping("/comments/{commentId}/replies")
+    public ResponseEntity<?> createReply(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long commentId,
+            @RequestBody Map<String, String> body
+    ) {
+        CreateCommentRequest replyRequest = new CreateCommentRequest();
+        replyRequest.setContent(body.get("content"));
+        replyRequest.setParentCommentId(commentId);
+
+        // parentComment에서 postId 조회
+        com.moodcast.post.vo.CommentSummary parent = postService.getCommentById(commentId);
+        CommentSummary reply = postService.addComment(authorizationHeader, parent.getPostId(), replyRequest);
+        return ResponseEntity.ok(Map.of("success", true, "comment", reply));
+    }
+
+    @PutMapping("/comments/{commentId}")
+    public ResponseEntity<?> updateComment(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long commentId,
+            @RequestBody Map<String, String> body
+    ) {
+        CommentSummary updated = postService.updateComment(authorizationHeader, commentId, body.get("content"));
+        return ResponseEntity.ok(Map.of("success", true, "comment", updated));
+    }
+
+    @DeleteMapping("/comments/{commentId}")
+    public ResponseEntity<?> deleteComment(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long commentId
+    ) {
+        postService.deleteComment(authorizationHeader, commentId);
+        return ResponseEntity.ok(Map.of("success", true, "message", "댓글이 삭제되었습니다."));
+    }
 }

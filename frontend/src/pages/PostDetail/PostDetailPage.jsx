@@ -78,6 +78,7 @@ export function PostDetailPage() {
           vibes: data.vibes ?? 0,
           likedByMe: data.likedByMe,
           savedByMe: data.savedByMe,
+          tags: data.tags ?? '',
           imageSrc: data.imageSrc ?? data.image ?? data.cover ?? data.thumbnail,
           imageAlt: data.imageAlt || data.author,
         });

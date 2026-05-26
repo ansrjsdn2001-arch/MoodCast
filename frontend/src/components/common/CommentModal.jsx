@@ -1,16 +1,52 @@
 import CloseIcon from '@mui/icons-material/Close';
 import FavoriteIcon from '@mui/icons-material/Favorite';
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
 import SendOutlinedIcon from '@mui/icons-material/SendOutlined';
-import { useEffect, useState } from 'react';
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { useAuthStore } from '../../stores/useAuthStore';
+import { HashtagRow } from './HashtagRow';
 import styles from './CommentModal.module.css';
 
-export function CommentModal({ open, post, comments, onClose, onSubmit }) {
+export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, onCommentUpdate }) {
   const navigate = useNavigate();
+  const { member, accessToken } = useAuthStore();
+  const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
   const [comment, setComment] = useState('');
+  const [liked, setLiked] = useState(false);
+  const [likesCount, setLikesCount] = useState(0);
+  const [localComments, setLocalComments] = useState([]);
+  const [menuOpenId, setMenuOpenId] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState('');
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (open && post) {
+      setLiked(Boolean(post.likedByMe));
+      setLikesCount(post.likes ?? 0);
+    }
+  }, [open, post]);
+
+  useEffect(() => {
+    setLocalComments(comments ?? []);
+  }, [comments]);
+
+  useEffect(() => {
+    if (!menuOpenId) return undefined;
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpenId(null);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [menuOpenId]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -47,7 +83,33 @@ export function CommentModal({ open, post, comments, onClose, onSubmit }) {
   if (!open || !post) return null;
 
   const postProfileLink = post.profileLink ?? (post.memberId ? `/app/user/${post.memberId}` : null);
-  const handleAuthorNavigation = (event, link) => {
+  const handleEditSave = async (commentId) => {
+    if (!editText.trim()) return;
+    try {
+      await axios.put(`${BACKSERVER}/posts/comments/${commentId}`, { content: editText.trim() }, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      setLocalComments((prev) => prev.map((c) => (c.commentId === commentId ? { ...c, content: editText.trim() } : c)));
+      setEditingId(null);
+      if (onCommentUpdate) onCommentUpdate();
+    } catch {
+      alert('댓글 수정에 실패했습니다.');
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('댓글을 삭제하시겠습니까?')) return;
+    try {
+      await axios.delete(`${BACKSERVER}/posts/comments/${commentId}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      setLocalComments((prev) => prev.filter((c) => c.commentId !== commentId));
+      setMenuOpenId(null);
+      if (onCommentUpdate) onCommentUpdate();
+    } catch {
+      alert('댓글 삭제에 실패했습니다.');
+    }
+  };  const handleAuthorNavigation = (event, link) => {
     event.stopPropagation();
     if (link) {
       navigate(link);
@@ -95,6 +157,7 @@ export function CommentModal({ open, post, comments, onClose, onSubmit }) {
         <div className={styles.body}>
           <section className={styles.postSection}>
             <p className={styles.postText}>{post.text}</p>
+            <HashtagRow tags={post.tags} variant="modal" />
             {post.imageSrc ? (
               <div
                 className={styles.postImageArea}
@@ -108,9 +171,25 @@ export function CommentModal({ open, post, comments, onClose, onSubmit }) {
               </div>
             ) : null}
             <div className={styles.actionRow} aria-label="게시글 반응 영역">
-              <button type="button" className={styles.actionButton}>
-                <FavoriteIcon />
-                <span>{post.likes}</span>
+              <button
+                type="button"
+                className={styles.actionButton}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (onLike) {
+                    const result = await onLike(e);
+                    if (result !== undefined) {
+                      setLiked(result.liked);
+                      setLikesCount(result.likes);
+                    }
+                  }
+                }}
+              >
+                {liked
+                  ? <FavoriteIcon style={{ color: '#e74c3c' }} />
+                  : <FavoriteBorderIcon style={{ color: '#e74c3c' }} />
+                }
+                <span>{likesCount}</span>
               </button>
               <button type="button" className={styles.actionButton}>
                 <ChatBubbleOutlineIcon />
@@ -129,30 +208,66 @@ export function CommentModal({ open, post, comments, onClose, onSubmit }) {
               <span>{comments.length}개</span>
             </div>
             <div className={styles.list}>
-              {comments.length ? (
-                comments.map((item) => {
+              {localComments.length ? (
+                localComments.map((item) => {
                   const commentProfileLink = item.profileLink ?? (item.memberId ? `/app/user/${item.memberId}` : null);
+                  const isMyComment = member && item.memberId && String(item.memberId) === String(member.memberId);
                   return (
                     <article key={item.commentId ?? item.id} className={styles.item}>
-                      <div className={styles.meta}>
-                        <div
-                          className={styles.commentAvatar}
-                          onClick={(event) => handleAuthorNavigation(event, commentProfileLink)}
-                          style={commentProfileLink ? { cursor: 'pointer' } : {}}
-                        >
-                          {item.author?.[0] ?? '?'}
-                        </div>
-                        <div>
-                          <strong
+                      <div className={styles.itemHead}>
+                        <div className={styles.meta}>
+                          <div
+                            className={styles.commentAvatar}
                             onClick={(event) => handleAuthorNavigation(event, commentProfileLink)}
                             style={commentProfileLink ? { cursor: 'pointer' } : {}}
                           >
-                            {item.author}
-                          </strong>
-                          <p>{item.time ?? item.createdAt}</p>
+                            {item.author?.[0] ?? '?'}
+                          </div>
+                          <div>
+                            <strong
+                              onClick={(event) => handleAuthorNavigation(event, commentProfileLink)}
+                              style={commentProfileLink ? { cursor: 'pointer' } : {}}
+                            >
+                              {item.author}
+                            </strong>
+                            <p>{item.time ?? item.createdAt}</p>
+                          </div>
                         </div>
+                        {isMyComment && (
+                          <div className={styles.commentMenuWrap} ref={menuOpenId === (item.commentId ?? item.id) ? menuRef : null}>
+                            <button type="button" className={styles.commentMenuBtn} onClick={() => setMenuOpenId(menuOpenId === (item.commentId ?? item.id) ? null : (item.commentId ?? item.id))}>
+                              <MoreHorizIcon fontSize="small" />
+                            </button>
+                            {menuOpenId === (item.commentId ?? item.id) && (
+                              <div className={styles.commentMenu}>
+                                <button type="button" onClick={() => { setEditingId(item.commentId ?? item.id); setEditText(item.content ?? item.text ?? ''); setMenuOpenId(null); }}>
+                                  <EditIcon fontSize="small" /> 수정
+                                </button>
+                                <button type="button" className={styles.danger} onClick={() => handleDeleteComment(item.commentId ?? item.id)}>
+                                  <DeleteOutlineIcon fontSize="small" /> 삭제
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <p>{item.text ?? item.content}</p>
+                      {editingId === (item.commentId ?? item.id) ? (
+                        <div className={styles.editArea}>
+                          <textarea
+                            className={styles.editInput}
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                            rows={2}
+                            autoFocus
+                          />
+                          <div className={styles.editActions}>
+                            <button type="button" className={styles.editCancel} onClick={() => setEditingId(null)}>취소</button>
+                            <button type="button" className={styles.editSave} onClick={() => handleEditSave(item.commentId ?? item.id)}>저장</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className={styles.commentText}>{item.content ?? item.text}</p>
+                      )}
                     </article>
                   );
                 })

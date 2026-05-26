@@ -11,6 +11,7 @@ public class PostSummary {
     private String content;
     private Long emotionId;
     private String createdAt;
+    private String tags;
     private Long likes;
     private Long comments;
     private Boolean likedByMe;

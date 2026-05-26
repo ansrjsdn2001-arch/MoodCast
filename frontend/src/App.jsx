@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { useIsDesktop } from './hooks/useViewportWidth';
 import { HomeFeedPage } from './pages/HomeFeed/HomeFeedPage';
 import { MobileFeedPage } from './pages/MobileFeed/MobileFeedPage';
@@ -17,20 +17,56 @@ import { ProfileSetupPage } from './pages/ProfileSetup/ProfileSetupPage';
 import { LoginPage } from './pages/Auth/LoginPage';
 import { AdminRoutes } from './pages/Admin/AdminPages';
 import { SignupPage } from './pages/Auth/SignupPage';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useAuthStore } from './stores/useAuthStore';
 
+function ProfileRedirect() {
+  const navigate = useNavigate();
+  const { member, accessToken } = useAuthStore();
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    if (!accessToken && member == null) {
+      // 로그인 정보가 없는 경우 바로 로그인 화면으로 이동
+      navigate('/auth/login', { replace: true });
+      return;
+    }
+
+    if (accessToken && !member) {
+      // 토큰은 있으나 member 정보가 아직 로딩 중인 경우 대기
+      return;
+    }
+
+    if (member?.memberId) {
+      navigate(`/app/user/${member.memberId}`, { replace: true });
+    } else {
+      navigate('/auth/login', { replace: true });
+    }
+
+    setInitialized(true);
+  }, [member, accessToken, navigate]);
+
+  return null;
+}
+
 function AppRoutes() {
   const desktop = useIsDesktop();
-  const { accessToken, setAuthData, clearAuthData } = useAuthStore();
+  const { accessToken, member, setAuthData, clearAuthData } = useAuthStore();
+  const [initialized, setInitialized] = useState(false);
 
   /*
     새로고침 후 sessionStorage에 남아있는 accessToken이
     서버 기준으로도 유효한지 확인한다.
+    initialized 플래그를 사용해서 한 번만 실행되도록 함.
   */
   useEffect(() => {
+    if (initialized) {
+      return;
+    }
+
     if (!accessToken) {
+      setInitialized(true);
       return;
     }
 
@@ -45,10 +81,18 @@ function AppRoutes() {
         setAuthData(accessToken, loginMember);
       })
       .catch((err) => {
-        console.log("로그인 상태 확인 실패", err);
-        clearAuthData();
+        // 401(인증 만료)일 때만 로그아웃, 네트워크 오류 등은 기존 토큰 유지
+        if (err.response?.status === 401) {
+          console.log("토큰 만료 - 로그아웃 처리");
+          clearAuthData();
+        } else {
+          console.log("서버 연결 오류 - 기존 토큰 유지", err.message);
+        }
+      })
+      .finally(() => {
+        setInitialized(true);
       });
-  }, [accessToken, setAuthData, clearAuthData]);
+  }, []);
 
   return (
     <Routes>
@@ -65,8 +109,8 @@ function AppRoutes() {
       <Route path="/app/mood-chat" element={<MoodChatPage />} />
       <Route path="/app/chat" element={<MoodChatPage />} />
       {/* 마이페이지와 유저페이지를 ProfilePage 하나로 통합함 */}
-      <Route path="/app/profile" element={<ProfilePage />} />
-      <Route path="/app/profile-mobile" element={<ProfilePage />} />
+      <Route path="/app/profile" element={<ProfileRedirect />} />
+      <Route path="/app/profile-mobile" element={<ProfileRedirect />} />
       <Route path="/app/profile/edit" element={<ProfileEditPage />} />
       <Route path="/app/post/edit/:postId" element={<EditPostPage />} />
       <Route path="/app/post/:postId" element={<PostDetailPage />} />

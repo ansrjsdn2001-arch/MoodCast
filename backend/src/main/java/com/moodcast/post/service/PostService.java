@@ -130,11 +130,32 @@ public class PostService {
         return post;
     }
 
+    public CommentSummary getCommentById(Long commentId) {
+        CommentSummary c = postDao.selectCommentById(commentId);
+        if (c == null) throw new IllegalArgumentException("댓글을 찾을 수 없습니다.");
+        return c;
+    }
+
     public List<CommentSummary> getComments(Long postId) {
         if (postId == null) {
             throw new IllegalArgumentException("게시물 ID가 필요합니다.");
         }
-        return postDao.selectCommentsByPostId(postId);
+        List<CommentSummary> parents = postDao.selectCommentsByPostId(postId);
+        List<CommentSummary> replies = postDao.selectRepliesByPostId(postId);
+
+        // replies를 parentCommentId 기준으로 부모에 붙이기
+        java.util.Map<Long, CommentSummary> parentMap = new java.util.LinkedHashMap<>();
+        for (CommentSummary p : parents) {
+            p.setReplies(new java.util.ArrayList<>());
+            parentMap.put(p.getCommentId(), p);
+        }
+        for (CommentSummary r : replies) {
+            CommentSummary parent = parentMap.get(r.getParentCommentId());
+            if (parent != null) {
+                parent.getReplies().add(r);
+            }
+        }
+        return parents;
     }
 
     @Transactional
@@ -146,13 +167,14 @@ public class PostService {
             throw new IllegalArgumentException("댓글을 입력해주세요.");
         }
 
-        LoginMemberResponse loginMember = loginService.getLoginMember(authorizationHeader);
+        LoginMemberResponse loginMember = loginService.getLoginMemberByHeader(authorizationHeader);
         Long memberId = loginMember.getMemberId();
 
         CommentSummary comment = new CommentSummary();
         comment.setPostId(postId);
         comment.setMemberId(memberId);
         comment.setContent(request.getContent().trim());
+        comment.setParentCommentId(request.getParentCommentId());
 
         int inserted = postDao.insertComment(comment);
         if (inserted != 1 || comment.getCommentId() == null) {
@@ -169,7 +191,7 @@ public class PostService {
             throw new IllegalArgumentException("게시물 ID가 필요합니다.");
         }
 
-        LoginMemberResponse loginMember = loginService.getLoginMember(authorizationHeader);
+        LoginMemberResponse loginMember = loginService.getLoginMemberByHeader(authorizationHeader);
         Long memberId = loginMember.getMemberId();
 
         boolean alreadyLiked = postDao.selectPostLikeByPostAndMember(postId, memberId) > 0;
@@ -193,7 +215,7 @@ public class PostService {
             throw new IllegalArgumentException("게시물 ID가 필요합니다.");
         }
 
-        LoginMemberResponse loginMember = loginService.getLoginMember(authorizationHeader);
+        LoginMemberResponse loginMember = loginService.getLoginMemberByHeader(authorizationHeader);
         Long memberId = loginMember.getMemberId();
 
         boolean alreadySaved = postDao.selectSavedPostByPostAndMember(postId, memberId) > 0;
@@ -228,7 +250,7 @@ public class PostService {
             throw new IllegalArgumentException("게시물 정보를 입력해주세요.");
         }
 
-        LoginMemberResponse loginMember = loginService.getLoginMember(authorizationHeader);
+        LoginMemberResponse loginMember = loginService.getLoginMemberByHeader(authorizationHeader);
         PostDetail currentPost = getPostById(postId, null);
         if (!currentPost.getMemberId().equals(loginMember.getMemberId())) {
             throw new IllegalArgumentException("본인이 작성한 게시물만 수정할 수 있습니다.");
@@ -280,12 +302,43 @@ public class PostService {
             throw new IllegalArgumentException("게시물 ID가 필요합니다.");
         }
 
-        LoginMemberResponse loginMember = loginService.getLoginMember(authorizationHeader);
+        LoginMemberResponse loginMember = loginService.getLoginMemberByHeader(authorizationHeader);
         PostDetail currentPost = getPostById(postId, null);
         if (!currentPost.getMemberId().equals(loginMember.getMemberId())) {
             throw new IllegalArgumentException("본인이 작성한 게시물만 삭제할 수 있습니다.");
         }
 
         postDao.softDeletePost(postId);
+    }
+
+    @Transactional
+    public CommentSummary updateComment(String authorizationHeader, Long commentId, String content) {
+        if (commentId == null) throw new IllegalArgumentException("댓글 ID가 필요합니다.");
+        if (content == null || content.trim().isEmpty()) throw new IllegalArgumentException("댓글 내용을 입력해주세요.");
+
+        LoginMemberResponse loginMember = loginService.getLoginMemberByHeader(authorizationHeader);
+        CommentSummary comment = postDao.selectCommentById(commentId);
+        if (comment == null) throw new IllegalArgumentException("댓글을 찾을 수 없습니다.");
+        if (!comment.getMemberId().equals(loginMember.getMemberId())) {
+            throw new IllegalArgumentException("본인이 작성한 댓글만 수정할 수 있습니다.");
+        }
+
+        postDao.updateComment(commentId, content.trim());
+        comment.setContent(content.trim());
+        return comment;
+    }
+
+    @Transactional
+    public void deleteComment(String authorizationHeader, Long commentId) {
+        if (commentId == null) throw new IllegalArgumentException("댓글 ID가 필요합니다.");
+
+        LoginMemberResponse loginMember = loginService.getLoginMemberByHeader(authorizationHeader);
+        CommentSummary comment = postDao.selectCommentById(commentId);
+        if (comment == null) throw new IllegalArgumentException("댓글을 찾을 수 없습니다.");
+        if (!comment.getMemberId().equals(loginMember.getMemberId())) {
+            throw new IllegalArgumentException("본인이 작성한 댓글만 삭제할 수 있습니다.");
+        }
+
+        postDao.deleteComment(commentId);
     }
 }

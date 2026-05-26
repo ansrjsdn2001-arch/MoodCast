@@ -88,6 +88,7 @@ export function HomeFeedPage() {
           vibes: item.vibes ?? 0,
           likedByMe: item.likedByMe,
           savedByMe: item.savedByMe,
+          tags: item.tags ?? '',
           previewComment: null,
         })));
       })

@@ -34,7 +34,15 @@ public interface PostDao {
 
     List<CommentSummary> selectCommentsByPostId(@Param("postId") Long postId);
 
+    List<CommentSummary> selectRepliesByPostId(@Param("postId") Long postId);
+
     int insertComment(CommentSummary comment);
+
+    int updateComment(@Param("commentId") Long commentId, @Param("content") String content);
+
+    int deleteComment(@Param("commentId") Long commentId);
+
+    CommentSummary selectCommentById(@Param("commentId") Long commentId);
 
     int selectPostLikeByPostAndMember(@Param("postId") Long postId, @Param("memberId") Long memberId);
 
