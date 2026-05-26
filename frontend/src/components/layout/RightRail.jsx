@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import KeyboardArrowDownRoundedIcon from '@mui/icons-material/KeyboardArrowDownRounded';
 import styles from './RightRail.module.css';
 import { EmotionBadge } from '../common/EmotionBadge';
 import { EMOTION_RANGE_OPTIONS, buildEmotionStats, filterPostsByRange } from '../../shared/lib/emotionStats';
 
-export function RightRail({ posts = [], trendingTags, isLoading = false }) {
+function RightRailBase({ posts = [], trendingTags, isLoading = false }) {
   const [selectedRange, setSelectedRange] = useState('all');
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -128,3 +128,5 @@ export function RightRail({ posts = [], trendingTags, isLoading = false }) {
     </div>
   );
 }
+
+export const RightRail = memo(RightRailBase);

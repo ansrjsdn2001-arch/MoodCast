@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import styles from './DesktopShell.module.css';
 import { Sidebar } from './Sidebar';
@@ -14,21 +14,50 @@ const TRENDING_TAGS = [
   { name: '#마음챙김', count: '3.1K 게시물' },
 ];
 
-export function DesktopShell({ children }) {
+let cachedPosts = null;
+let cachedPostsPromise = null;
+
+async function fetchPosts(backserver) {
+  if (cachedPosts) {
+    return cachedPosts;
+  }
+
+  if (!cachedPostsPromise) {
+    cachedPostsPromise = axios
+      .get(`${backserver}/posts`)
+      .then((response) => {
+        const nextPosts = response.data?.results || [];
+        cachedPosts = nextPosts;
+        return nextPosts;
+      })
+      .finally(() => {
+        cachedPostsPromise = null;
+      });
+  }
+
+  return cachedPostsPromise;
+}
+
+function DesktopShell({ children }) {
   const [searchOpen, setSearchOpen] = useState(false);
-  const [posts, setPosts] = useState([]);
-  const [loadingPosts, setLoadingPosts] = useState(true);
+  const [posts, setPosts] = useState(() => cachedPosts || []);
+  const [loadingPosts, setLoadingPosts] = useState(() => !cachedPosts);
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
+
+  const handleSearchOpen = useCallback(() => {
+    setSearchOpen(true);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
 
     const loadPosts = async () => {
-      setLoadingPosts(true);
+      if (!cachedPosts) {
+        setLoadingPosts(true);
+      }
 
       try {
-        const response = await axios.get(`${BACKSERVER}/posts`);
-        const nextPosts = response.data?.results || [];
+        const nextPosts = await fetchPosts(BACKSERVER);
 
         if (!isMounted) return;
 
@@ -36,7 +65,7 @@ export function DesktopShell({ children }) {
       } catch (error) {
         console.error('게시물 목록을 불러오지 못했습니다.', error);
         if (!isMounted) return;
-        setPosts([]);
+        setPosts(cachedPosts || []);
       } finally {
         if (isMounted) {
           setLoadingPosts(false);
@@ -56,14 +85,20 @@ export function DesktopShell({ children }) {
       <aside className={styles.leftSlot}>
         <Sidebar />
       </aside>
-      <section className={styles.center}>{children}</section>
+      <section className={styles.center}>
+        <div className={styles.centerInner}>{children}</div>
+      </section>
       <aside className={styles.rightSlot}>
         <div className={styles.right}>
-          <TopUtilityIcons onSearch={() => setSearchOpen(true)} />
-          <RightRail posts={posts} trendingTags={TRENDING_TAGS} isLoading={loadingPosts} />
+          <TopUtilityIcons onSearch={handleSearchOpen} />
+          <div className={styles.rightScrollArea}>
+            <RightRail posts={posts} trendingTags={TRENDING_TAGS} isLoading={loadingPosts && !posts.length} />
+          </div>
         </div>
       </aside>
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </main>
   );
 }
+
+export { DesktopShell };

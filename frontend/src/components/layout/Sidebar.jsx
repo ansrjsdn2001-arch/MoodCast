@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { NavLink } from 'react-router-dom';
 import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined';
 import BookmarkBorderOutlinedIcon from '@mui/icons-material/BookmarkBorderOutlined';
@@ -53,7 +54,7 @@ export function SidebarContent() {
   );
 }
 
-export function Sidebar() {
+function SidebarBase() {
   return (
     <aside className={styles.sidebar}>
       <SidebarTop />
@@ -61,3 +62,5 @@ export function Sidebar() {
     </aside>
   );
 }
+
+export const Sidebar = memo(SidebarBase);
