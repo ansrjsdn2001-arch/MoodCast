@@ -3,7 +3,7 @@ package com.moodcast.post.vo;
 import lombok.Data;
 
 @Data
-public class PostSummary {
+public class PostDetail {
     private Long postId;
     private Long memberId;
     private String author;
@@ -14,6 +14,7 @@ public class PostSummary {
     private String tags;
     private Long likes;
     private Long comments;
+    private Long saves;
     private Boolean likedByMe;
     private Boolean savedByMe;
     private String profileImageUrl;

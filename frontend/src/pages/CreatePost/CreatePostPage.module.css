@@ -260,6 +260,18 @@
   cursor: pointer;
 }
 
+.submitButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.fieldError {
+  color: #dc2626;
+  font-size: 0.88rem;
+  font-weight: 700;
+  margin-top: -6px;
+}
+
 .message {
   color: #7c4dff;
   font-weight: 800;

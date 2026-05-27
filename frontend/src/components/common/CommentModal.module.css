@@ -74,6 +74,16 @@
   font-weight: 800;
 }
 
+.avatar img,
+.commentAvatar img,
+.replyAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
 .avatar {
   width: 44px;
   height: 44px;
@@ -111,19 +121,25 @@
 .postImageArea {
   width: 100%;
   max-width: 100%;
-  height: 320px;
-  overflow: hidden;
+  min-height: 200px;
+  max-height: 65vh;
   border-radius: 18px;
-  background: #000;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
 }
 
 .detailPostImage {
   display: block;
-  width: 100%;
-  height: 100%;
-  max-width: 100%;
+  width: auto;
+  height: auto;
+  max-width: 95%;
+  max-height: 65vh;
   object-fit: contain;
   object-position: center;
+  border-radius: 12px;
 }
 
 .actionRow {
@@ -140,10 +156,15 @@
   min-height: 36px;
   padding: 0 12px;
   border: 0;
-  border-radius: 999px;
-  background: #f8f9ff;
+  background: transparent;
   color: #667085;
   font-size: 0.9rem;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.actionButton:hover {
+  color: #111827;
 }
 
 .commentsSection {
@@ -178,6 +199,211 @@
   border-radius: 18px;
   background: #f8f9ff;
 }
+
+.itemHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.commentMenuWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.commentMenuBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+}
+
+.commentMenuBtn:hover {
+  color: #374151;
+  background: #f3f4f6;
+}
+
+.commentMenu {
+  position: absolute;
+  right: 0;
+  top: 28px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  z-index: 100;
+  min-width: 100px;
+  overflow: hidden;
+}
+
+.commentMenu button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.88rem;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.commentMenu button:hover {
+  background: #f9fafb;
+}
+
+.commentMenu .danger {
+  color: #ef4444;
+}
+
+.commentText {
+  margin: 10px 0 0;
+  color: #111827;
+  line-height: 1.5;
+}
+
+.editArea {
+  margin-top: 10px;
+}
+
+.editInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1.5px solid #6366f1;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  resize: none;
+  outline: none;
+}
+
+.editActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.editCancel {
+  padding: 5px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.84rem;
+  color: #6b7280;
+}
+
+.editSave {
+  padding: 5px 14px;
+  border: none;
+  border-radius: 8px;
+  background: #6366f1;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+/* ---- 답글 관련 스타일 ---- */
+
+.replyActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.replyBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: #6366f1;
+  padding: 3px 0;
+  font-weight: 500;
+}
+
+.replyBtn:hover {
+  color: #4f46e5;
+  text-decoration: underline;
+}
+
+.toggleRepliesBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: #667085;
+  padding: 3px 0;
+}
+
+.toggleRepliesBtn:hover {
+  color: #374151;
+}
+
+.replyComposer {
+  margin-top: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.replyInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1.5px solid #6366f1;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  resize: none;
+  outline: none;
+  background: #f5f3ff;
+}
+
+.replyComposerActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.repliesList {
+  margin-top: 8px;
+  display: grid;
+  gap: 6px;
+  padding-left: 16px;
+  border-left: 2px solid #e5e7eb;
+}
+
+.replyItem {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #f0f0ff;
+}
+
+.replyAvatar {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #c7d2fe, #a5b4fc);
+  color: #111827;
+  font-weight: 800;
+  width: 32px;
+  height: 32px;
+  font-size: 0.85rem;
+}
+
+
 
 .meta {
   display: flex;

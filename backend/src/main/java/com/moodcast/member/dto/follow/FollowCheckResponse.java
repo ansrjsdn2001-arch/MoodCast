@@ -14,4 +14,6 @@ public class FollowCheckResponse {
     private long followingCount;
     private long postCount;
     private long savedCount;
+    private int emotionEmpathyRate;
+    private long weeklyReactions;
 }

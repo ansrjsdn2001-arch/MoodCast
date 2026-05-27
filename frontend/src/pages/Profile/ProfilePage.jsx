@@ -6,13 +6,22 @@ import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { FeedCard } from '../../components/common/FeedCard';
-import { profileHighlights } from '../../data/moodcastData';
+import { defaultAvatarSrc } from '../../shared/lib/defaultAvatar';
+import { normalizePostDataArray } from '../../shared/lib/postHelpers';
+import { Card, CardContent, Typography, Box } from '@mui/material';
+import WhatshotIcon from '@mui/icons-material/Whatshot';
+import DirectionsRunIcon from '@mui/icons-material/DirectionsRun';
+import BedtimeIcon from '@mui/icons-material/Bedtime';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import GradeIcon from '@mui/icons-material/Grade';
+import SeedlingIcon from '@mui/icons-material/Spa';
 import styles from './ProfilePage.module.css';
 
 export function ProfilePage() {
   const desktop = useIsDesktop();
   const navigate = useNavigate();
   const { handle } = useParams(); // URL 파라미터 :handle (memberId)
+  const sanitizedHandle = handle === 'undefined' || handle === 'null' ? null : handle;
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState([]);
@@ -22,19 +31,23 @@ export function ProfilePage() {
     followerCount: 0, 
     followingCount: 0,
     postCount: 0,
-    savedCount: 0
+    savedCount: 0,
+    emotionEmpathyRate: 0,
+    weeklyReactions: 0,
   });
   
   const { member: currentMember, accessToken: token, isLoggedIn } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
   // 실제 조회할 ID 결정 (파라미터 없으면 내 ID)
-  const targetId = handle || currentMember?.memberId;
+  const targetId = sanitizedHandle || currentMember?.memberId;
+  const waitingForAuth = !sanitizedHandle && token && !currentMember;
 
   // 팔로우 상태 및 카운트 조회 함수
   const fetchFollowStatus = useCallback(() => {
     if (!targetId) return;
     
+    // 프로필 페이지에서 내 통계도 정확하게 보여주기 위해 토큰을 함께 보냄
     const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
     
     axios.get(`${BACKSERVER}/auth/follow/status/${targetId}`, config)
@@ -45,7 +58,9 @@ export function ProfilePage() {
             followerCount: res.data.followerCount,
             followingCount: res.data.followingCount,
             postCount: res.data.postCount,
-            savedCount: res.data.savedCount
+            savedCount: res.data.savedCount,
+            emotionEmpathyRate: res.data.emotionEmpathyRate || 0,
+            weeklyReactions: res.data.weeklyReactions || 0,
           });
         }
       })
@@ -54,6 +69,9 @@ export function ProfilePage() {
 
   useEffect(() => {
     if (!targetId) {
+      if (waitingForAuth) {
+        return;
+      }
       setLoading(false);
       return;
     }
@@ -74,20 +92,24 @@ export function ProfilePage() {
       .finally(() => {
         setLoading(false);
       });
-  }, [targetId, BACKSERVER, fetchFollowStatus]);
+  }, [targetId, BACKSERVER, fetchFollowStatus, waitingForAuth]);
 
   useEffect(() => {
     if (!targetId) {
+      if (waitingForAuth) {
+        return;
+      }
       setPosts([]);
       setPostsLoading(false);
       return;
     }
 
     setPostsLoading(true);
-    axios.get(`${BACKSERVER}/posts`, { params: { memberId: targetId } })
+    const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    axios.get(`${BACKSERVER}/posts`, { params: { memberId: targetId }, ...config })
       .then(res => {
         if (res.data.success) {
-          setPosts(res.data.results || []);
+          setPosts(normalizePostDataArray(res.data.results || []));
         } else {
           setPosts([]);
         }
@@ -99,80 +121,11 @@ export function ProfilePage() {
       .finally(() => {
         setPostsLoading(false);
       });
-  }, [targetId, BACKSERVER]);
+  }, [targetId, BACKSERVER, waitingForAuth]);
 
-  const isOwnProfile = currentMember && String(currentMember.memberId) === String(targetId);
-
-  const normalizeContent = (content) => {
-    if (!content) return '';
-    // HTML 태그 제거
-    let text = content.replace(/<[^>]+>/g, '').trim();
-    // HTML 엔티티 디코딩
-    const textarea = document.createElement('textarea');
-    textarea.innerHTML = text;
-    return textarea.value;
-  };
-
-  const formatTime = (dateString) => {
-    // 시간 정보가 없으면 '방금'이라고 표시함
-    if (!dateString) return '방금';
-    
-    // 서버에서 받은 시간 문자열을 JavaScript Date 객체로 변환함
-    const date = new Date(dateString);
-    // 현재 시간을 Date 객체로 가져옴
-    const now = new Date();
-    
-    // 현재 시간과 게시글 작성 시간의 차이를 계산함
-    // getTime()은 1970년 1월 1일 00:00:00부터 지난 밀리초를 반환함
-    const diffMs = now.getTime() - date.getTime();
-    
-    // 밀리초 차이를 분으로 변환함 (1분 = 60000밀리초)
-    const diffMins = Math.floor(diffMs / 60000);
-    // 밀리초 차이를 시간으로 변환함 (1시간 = 3600000밀리초)
-    const diffHours = Math.floor(diffMs / 3600000);
-    // 밀리초 차이를 일로 변환함 (1일 = 86400000밀리초)
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    // 1분 이내면 '방금'으로 표시함
-    if (diffMins < 1) return '방금';
-    // 1분 이상 60분 미만이면 '~분 전'으로 표시함
-    if (diffMins < 60) return `${diffMins}분 전`;
-    // 1시간 이상 24시간 미만이면 '~시간 전'으로 표시함
-    if (diffHours < 24) return `${diffHours}시간 전`;
-    // 1일 이상 7일 미만이면 '~일 전'으로 표시함
-    if (diffDays < 7) return `${diffDays}일 전`;
-    
-    // 7일 이상 지나면 정확한 날짜와 시간을 표시함
-    // Intl.DateTimeFormat은 다양한 언어와 지역에 맞게 날짜를 포맷팅함
-    // timeZone: 'Asia/Seoul'로 설정하여 한국 시간대로 표시함
-    // (예: 2026.05.26 13:45)
-    return new Intl.DateTimeFormat('ko-KR', {
-      year: 'numeric',           // 연도를 숫자로 표시함 (예: 2026)
-      month: '2-digit',          // 월을 2자리 숫자로 표시함 (예: 05)
-      day: '2-digit',            // 일을 2자리 숫자로 표시함 (예: 26)
-      hour: '2-digit',           // 시간을 2자리 숫자로 표시함 (예: 13)
-      minute: '2-digit',         // 분을 2자리 숫자로 표시함 (예: 45)
-      timeZone: 'Asia/Seoul'     // 한국 시간대(UTC+9)로 설정함
-    }).format(date);
-  };
-
-  const transformPostData = (item) => {
-    const authorName = item.author || item.authorName || item.authorNickname || item.nickname || '익명';
-    return {
-      id: item.postId,
-      title: item.title,
-      author: authorName,
-      avatar: authorName ? authorName.charAt(0).toUpperCase() : '?',
-      time: formatTime(item.createdAt),
-      text: normalizeContent(item.content),
-      emotionId: item.emotionId,
-      commentsList: [],
-      likes: 0,
-      vibes: 0,
-      previewComment: null,
-      postId: item.postId,
-    };
-  };
+  // 자신의 프로필인지 확인 (user.memberId가 있으면 그것을 우선 사용, 없으면 currentMember 사용)
+  const isOwnProfile = (user?.memberId && currentMember?.memberId && String(user.memberId) === String(currentMember.memberId)) ||
+                       (currentMember && String(currentMember.memberId) === String(targetId));
 
   // 팔로우 처리 함수
   const handleFollowToggle = () => {
@@ -209,6 +162,28 @@ export function ProfilePage() {
     }
   };
 
+  // 활발함 상태 결정
+  const getActivityStatus = () => {
+    const reactions = followInfo.weeklyReactions;
+    if (reactions >= 10) return { emoji: '🔥', text: '활발함' };
+    if (reactions >= 5) return { emoji: '⭐', text: '활동중' };
+    return { emoji: '😴', text: '조용함' };
+  };
+
+  // 인기도 상태 결정
+  const getPopularityStatus = () => {
+    const postCount = followInfo.postCount;
+    if (postCount === 0) return { emoji: '🆕', text: '신규' };
+    
+    // posts 배열에서 총 좋아요 계산
+    const totalLikes = posts.reduce((sum, post) => sum + (post.likes || 0), 0);
+    const avgLikes = totalLikes / postCount;
+    
+    if (avgLikes >= 3) return { emoji: '👑', text: '인기' };
+    if (avgLikes >= 1) return { emoji: '⭐', text: '인기있음' };
+    return { emoji: '📝', text: '신규' };
+  };
+
   if (loading) {
     const loader = <div style={{ padding: '20px', textAlign: 'center' }}>프로필을 불러오는 중...</div>;
     if (!desktop) return <MobileShell title="프로필" hideSearch>{loader}</MobileShell>;
@@ -224,6 +199,8 @@ export function ProfilePage() {
   const displayName = user?.nickname || user?.name || 'MoodCast 사용자';
   const displayInitial = displayName.charAt(0).toUpperCase();
   const displayText = user?.bio || (isOwnProfile ? '감성을 기록하고 커뮤니티 참여를 즐기는 MoodCast 프로필입니다.' : '안녕하세요! MoodCast 사용자입니다.');
+  const profileImageUrl = user?.profileImageUrl || null;
+  const profileAvatarSrc = profileImageUrl || defaultAvatarSrc;
   const handleChatClick = () => {
     const searchParams = new URLSearchParams({
       partnerId: String(targetId),
@@ -237,7 +214,9 @@ export function ProfilePage() {
     <section className={styles.wrap}>
       {/* 히어로 섹션 - 풍성하게 수정함 */}
       <article className={styles.hero}>
-        <div className={styles.avatar}>{displayInitial}</div>
+        <div className={styles.avatar}>
+          <img src={profileAvatarSrc} alt={displayName} />
+        </div>
         <div className={styles.heroContent}>
           <strong>{displayName}</strong>
           <p>{displayText}</p>
@@ -268,8 +247,8 @@ export function ProfilePage() {
         ) : null}
       </article>
 
-      {/* 통계 섹션 - 실제 데이터 적용 */}
-      <div className={styles.stats}>
+      {/* 통계 섹션 - MUI Grid로 개선 */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
         {[
           { label: '게시물', value: followInfo.postCount },
           { label: '저장됨', value: followInfo.savedCount },
@@ -277,41 +256,103 @@ export function ProfilePage() {
           { label: '팔로잉', value: followInfo.followingCount },
         ].map((item) => {
           const isClickable = ['저장됨', '팔로워', '팔로잉'].includes(item.label);
-          
-          // 저장됨의 경우 타인 프로필이면 클릭은 안 되게 처리함
           const canClick = isClickable && (item.label !== '저장됨' || isOwnProfile);
-          
-          if (!canClick) {
-            return (
-              <div key={item.label} className={styles.statCard}>
-                <strong>{item.label === '저장됨' && !isOwnProfile ? '0' : item.value}</strong>
-                <span>{item.label}</span>
-              </div>
-            );
-          }
           return (
-            <button
+            <Card
               key={item.label}
-              type="button"
-              className={styles.statCard}
-              onClick={() => handleStatClick(item.label)}
+              onClick={() => canClick && handleStatClick(item.label)}
+              sx={{
+                cursor: canClick ? 'pointer' : 'default',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '100px',
+                background: 'rgba(255, 255, 255, 0.28)',
+                border: '1px solid rgba(17, 24, 39, 0.085)',
+                borderRadius: '16px',
+                boxShadow: 'none',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  background: canClick ? '#f8f9ff' : undefined,
+                  transform: canClick ? 'translateY(-2px)' : 'none',
+                  boxShadow: canClick ? '0 4px 12px rgba(17, 24, 39, 0.1)' : 'none',
+                },
+              }}
             >
-              <strong>{item.value}</strong>
-              <span>{item.label}</span>
-            </button>
+              <CardContent sx={{ textAlign: 'center', padding: '20px 12px !important', width: '100%' }}>
+                <Typography sx={{ fontWeight: 800, color: '#111827', fontSize: '1.6rem', lineHeight: 1 }}>
+                  {item.label === '저장됨' && !isOwnProfile ? '0' : item.value}
+                </Typography>
+                <Typography sx={{ color: '#667085', display: 'block', marginTop: '8px', fontWeight: 500, fontSize: '0.85rem' }}>
+                  {item.label}
+                </Typography>
+              </CardContent>
+            </Card>
           );
         })}
-      </div>
+      </Box>
 
-      {/* 하이라이트 섹션 추가함 */}
-      <section className={styles.highlights}>
-        {profileHighlights.map((item) => (
-          <div key={item.label} className={styles.highlight}>
-            <span>{item.label}</span>
-            <strong>{item.value}</strong>
-          </div>
-        ))}
-      </section>
+      {/* 하이라이트 섹션 - 4개 개별 카드 */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+        {/* 감정 공감률 */}
+        <Card sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100px', background: 'rgba(255,255,255,0.28)', border: '1px solid rgba(17,24,39,0.085)', borderRadius: '16px', boxShadow: 'none' }}>
+          <CardContent sx={{ textAlign: 'center', padding: '20px 12px !important', width: '100%' }}>
+            <Typography sx={{ fontWeight: 800, color: '#111827', fontSize: '1.6rem', lineHeight: 1 }}>
+              {followInfo.emotionEmpathyRate}%
+            </Typography>
+            <Typography sx={{ color: '#667085', marginTop: '8px', fontWeight: 500, fontSize: '0.85rem' }}>
+              감정 공감률
+            </Typography>
+          </CardContent>
+        </Card>
+
+        {/* 주간 반응 */}
+        <Card sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100px', background: 'rgba(255,255,255,0.28)', border: '1px solid rgba(17,24,39,0.085)', borderRadius: '16px', boxShadow: 'none' }}>
+          <CardContent sx={{ textAlign: 'center', padding: '20px 12px !important', width: '100%' }}>
+            <Typography sx={{ fontWeight: 800, color: '#111827', fontSize: '1.6rem', lineHeight: 1 }}>
+              {followInfo.weeklyReactions}
+            </Typography>
+            <Typography sx={{ color: '#667085', marginTop: '8px', fontWeight: 500, fontSize: '0.85rem' }}>
+              주간 반응
+            </Typography>
+          </CardContent>
+        </Card>
+
+        {/* 활동 상태 */}
+        {(() => {
+          const activity = getActivityStatus();
+          const ActivityIcon = activity.text === '활발함' ? WhatshotIcon : activity.text === '활동중' ? DirectionsRunIcon : BedtimeIcon;
+          const iconColor = activity.text === '활발함' ? '#ff6d00' : activity.text === '활동중' ? '#7c4dff' : '#90a4ae';
+          return (
+            <Card sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100px', background: 'rgba(255,255,255,0.28)', border: '1px solid rgba(17,24,39,0.085)', borderRadius: '16px', boxShadow: 'none' }}>
+              <CardContent sx={{ textAlign: 'center', padding: '20px 12px !important', width: '100%' }}>
+                <ActivityIcon sx={{ fontSize: '2rem', color: iconColor }} />
+                <Typography sx={{ color: '#667085', marginTop: '6px', fontWeight: 600, fontSize: '0.85rem' }}>
+                  {activity.text}
+                </Typography>
+              </CardContent>
+            </Card>
+          );
+        })()}
+
+        {/* 인기 상태 */}
+        {(() => {
+          const popularity = getPopularityStatus();
+          const PopularityIcon = popularity.text === '인기' ? EmojiEventsIcon : popularity.text === '인기있음' ? GradeIcon : SeedlingIcon;
+          const iconColor = popularity.text === '인기' ? '#e65100' : popularity.text === '인기있음' ? '#f9a825' : '#43a047';
+          return (
+            <Card sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100px', background: 'rgba(255,255,255,0.28)', border: '1px solid rgba(17,24,39,0.085)', borderRadius: '16px', boxShadow: 'none' }}>
+              <CardContent sx={{ textAlign: 'center', padding: '20px 12px !important', width: '100%' }}>
+                <PopularityIcon sx={{ fontSize: '2rem', color: iconColor }} />
+                <Typography sx={{ color: '#667085', marginTop: '6px', fontWeight: 600, fontSize: '0.85rem' }}>
+                  {popularity.text}
+                </Typography>
+              </CardContent>
+            </Card>
+          );
+        })()}
+      </Box>
 
       {/* 최근 게시물 섹션 추가함 */}
       <section className={styles.recent}>
@@ -328,7 +369,7 @@ export function ProfilePage() {
             <div className={styles.emptyState}>게시물을 불러오는 중입니다...</div>
           ) : posts.length > 0 ? (
             posts.map((post) => (
-              <FeedCard key={post.postId} post={transformPostData(post)} compact />
+              <FeedCard key={post.postId} post={post} compact />
             ))
           ) : (
             <div className={styles.emptyState}>작성한 게시물이 없습니다.</div>

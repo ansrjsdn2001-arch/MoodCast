@@ -146,6 +146,21 @@ public class LoginService {
         return toLoginMemberResponse(member);
     }
 
+    public Long getMemberIdFromHeaderOptional(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return null;
+        }
+        String accessToken = authHeader.substring(7).trim();
+        if (accessToken.isEmpty()) {
+            return null;
+        }
+        try {
+            return jwtService.getMemberIdFromAccessToken(accessToken);
+        } catch (JwtException | IllegalArgumentException e) {
+            return null;
+        }
+    }
+
     @Transactional
     public LoginMemberResponse updateProfile(String authorizationHeader, UpdateProfileRequest request) {
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
@@ -171,7 +186,7 @@ public class LoginService {
 
             checkLoginAllowed(member);
 
-            loginDao.updateMemberProfile(memberId, request.getNickname().trim(), request.getBio());
+            loginDao.updateMemberProfile(memberId, request.getNickname().trim(), request.getBio(), request.getProfileImageUrl());
 
             Member updated = loginDao.findMemberById(memberId);
             if (updated == null) {
@@ -217,7 +232,18 @@ public class LoginService {
         long postCount = loginDao.countPosts(targetMemberId);
         long savedCount = loginDao.countSavedPosts(targetMemberId);
 
-        return new FollowCheckResponse(true, following, followerCount, followingCount, postCount, savedCount);
+        // 감정 공감률 계산: 내가 쓴 게시물에 대한 좋아요 비율임
+        // 좋아요, 댓글, 저장을 모두 반응으로 보고, 그중 좋아요 비율을 퍼센트로 계산함
+        long likes = loginDao.countPostLikes(targetMemberId);
+        long comments = loginDao.countPostComments(targetMemberId);
+        long saves = loginDao.countPostSaves(targetMemberId);
+        long totalReactions = likes + comments + saves;
+        int emotionEmpathyRate = totalReactions == 0 ? 0 : (int) Math.round((double) likes * 100 / totalReactions);
+
+        // 주간 반응 계산: 최근 7일간 내 게시물에 달린 좋아요/댓글/저장 수 합임
+        long weeklyReactions = loginDao.countWeeklyPostReactions(targetMemberId);
+
+        return new FollowCheckResponse(true, following, followerCount, followingCount, postCount, savedCount, emotionEmpathyRate, weeklyReactions);
     }
 
     public List<FollowItemResponse> getFollowerList(String authHeader, Long targetId) {
