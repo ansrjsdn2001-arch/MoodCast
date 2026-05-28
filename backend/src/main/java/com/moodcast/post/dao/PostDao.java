@@ -31,6 +31,8 @@ public interface PostDao {
 
     List<PostSummary> selectRecentPosts(@Param("viewerId") Long viewerId);
 
+    List<PostSummary> selectPopularPosts(@Param("viewerId") Long viewerId, @Param("limit") Integer limit);
+
     List<PostSummary> selectPostsByMember(@Param("memberId") Long memberId, @Param("viewerId") Long viewerId);
 
     List<CommentSummary> selectCommentsByPostId(@Param("postId") Long postId);

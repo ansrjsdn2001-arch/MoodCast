@@ -109,6 +109,12 @@ public class PostService {
         return postDao.selectRecentPosts(viewerId);
     }
 
+    public List<PostSummary> getPopularPosts(String authorizationHeader, Integer limit) {
+        Long viewerId = getViewerId(authorizationHeader);
+        int safeLimit = limit == null || limit <= 0 ? 5 : limit;
+        return postDao.selectPopularPosts(viewerId, safeLimit);
+    }
+
     public List<PostSummary> getPostsByMember(Long memberId, String authorizationHeader) {
         if (memberId == null) {
             throw new IllegalArgumentException("회원 ID가 필요합니다.");

@@ -42,13 +42,13 @@ export function SearchModal({ open, onClose }) {
     } : {};
 
     Promise.allSettled([
-      axios.get(`${BACKSERVER}/posts`, config),
+      axios.get(`${BACKSERVER}/posts/popular?limit=5`, config),
       axios.get(`${BACKSERVER}/search/users/trending?limit=10`, config),
       axios.get(`${BACKSERVER}/search/hashtags/trending?limit=10`, config),
     ])
       .then(([postsResult, usersResult, tagsResult]) => {
         if (postsResult.status === 'fulfilled') {
-          setTrendingPosts((postsResult.value.data?.results || []).slice(0, 10));
+          setTrendingPosts((postsResult.value.data?.results || []).slice(0, 5));
         } else {
           console.error('게시글 조회 실패:', postsResult.reason);
           setTrendingPosts([]);

@@ -124,6 +124,33 @@
         limit 50
     </select>
 
+    <select id="selectPopularPosts" parameterType="map" resultType="com.moodcast.post.vo.PostSummary">
+        select
+            p.post_id as postId,
+            p.member_id as memberId,
+            coalesce(m.nickname, m.name) as author,
+            p.title as title,
+            p.content as content,
+            p.emotion_id as emotionId,
+            date_format(p.created_at, '%Y-%m-%d %H:%i') as createdAt,
+            coalesce(m.profile_image_url, '') as profileImageUrl,
+            coalesce((
+                select group_concat(concat('#', h.hashtag) order by h.hashtag separator ' ')
+                from post_hashtag ph join hashtag h on ph.hashtag_id = h.hashtag_id
+                where ph.post_id = p.post_id
+            ), '') as tags,
+            coalesce((select count(*) from user_post_like where post_id = p.post_id), 0) as likes,
+            coalesce((select count(*) from comment_tbl where post_id = p.post_id and deleted_yn = 'N'), 0) as comments,
+            exists(select 1 from user_post_like where post_id = p.post_id and member_id = #{viewerId}) as likedByMe,
+            exists(select 1 from saved_post where post_id = p.post_id and member_id = #{viewerId}) as savedByMe
+        from post_tbl p
+                 join members m on p.member_id = m.member_id
+        where p.deleted_yn = 'N'
+        order by (coalesce((select count(*) from user_post_like where post_id = p.post_id), 0) + coalesce((select count(*) from comment_tbl where post_id = p.post_id and deleted_yn = 'N'), 0)) desc,
+                 p.created_at desc
+        limit #{limit}
+    </select>
+
     <select id="selectPostsByMember" parameterType="map" resultType="com.moodcast.post.vo.PostSummary">
         select
             p.post_id as postId,

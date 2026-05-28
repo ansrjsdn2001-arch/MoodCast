@@ -88,6 +88,19 @@ public class PostController {
         );
     }
 
+    @GetMapping("/popular")
+    public ResponseEntity<?> getPopularPosts(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestParam(value = "limit", required = false, defaultValue = "5") Integer limit
+    ) {
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "results", postService.getPopularPosts(authorizationHeader, limit)
+                )
+        );
+    }
+
     @GetMapping("/emotion-stats/{memberId}")
     public ResponseEntity<?> getWeeklyEmotionStats(@PathVariable Long memberId) {
         return ResponseEntity.ok(
