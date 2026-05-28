@@ -109,7 +109,7 @@ public class GroupChatService {
             return;
         }
 
-        groupChatMapper.updateLastReadMessageId(roomId, (long) memberId, lastReadMessageId);
+        int updatedRows = groupChatMapper.updateLastReadMessageId(roomId, (long) memberId, lastReadMessageId);
     }
 
     @Transactional
