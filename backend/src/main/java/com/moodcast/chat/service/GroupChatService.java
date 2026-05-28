@@ -297,7 +297,6 @@ public class GroupChatService {
                 message.getReadCount(),
                 message.getUnreadCount(),
                 message.getEventType()
-                null
         );
     }
 

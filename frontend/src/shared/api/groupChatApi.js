@@ -36,6 +36,12 @@ export function markGroupChatRoomAsRead(roomId, memberId) {
     .catch(() => ({}));
 }
 
+export function updateGroupChatRoomRead(roomId, payload) {
+  return axios
+    .patch(`${API_BASE}/chat/rooms/${roomId}/read`, payload)
+    .catch(() => ({}));
+}
+
 export function deleteGroupChatMessage(roomId, messageId, memberId) {
   return axios.delete(
     `${API_BASE}/chat/rooms/${roomId}/messages/${messageId}`,
