@@ -88,6 +88,16 @@ public class PostController {
         );
     }
 
+    @GetMapping("/emotion-stats/{memberId}")
+    public ResponseEntity<?> getWeeklyEmotionStats(@PathVariable Long memberId) {
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "stats", postService.getWeeklyEmotionStats(memberId)
+                )
+        );
+    }
+
     @PostMapping("/{postId}/comments")
     public ResponseEntity<?> createComment(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
