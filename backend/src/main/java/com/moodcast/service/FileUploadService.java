@@ -12,7 +12,6 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
-import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
@@ -111,7 +110,6 @@ public class FileUploadService {
                     .bucket(uploadBucket)
                     .key(key)
                     .contentType(contentType)
-                    .acl(ObjectCannedACL.PUBLIC_READ)
                     .build();
 
             // 실제 파일 데이터를 S3로 전송함
@@ -607,7 +605,6 @@ public class FileUploadService {
                         .bucket(uploadBucket)
                         .key(key)
                         .contentType(contentType)
-                        .acl(ObjectCannedACL.PUBLIC_READ)
                         .build();
 
                 try (InputStream inputStream = Files.newInputStream(filePath)) {
