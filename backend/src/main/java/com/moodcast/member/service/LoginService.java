@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.DigestException;
 import java.util.List;
 
 @Service
@@ -304,7 +305,38 @@ public class LoginService {
         if (token.isEmpty()) {
             throw new IllegalArgumentException("로그인이 필요합니다.");
         }
-
         return token;
+    }
+
+    // accessToken 재발급
+    public LoginResult refreshAccessToken(String refreshToken) {
+        // 토큰 검증 및 memberId 추출
+        Long memberId = jwtService.getMemberIdFromRefreshToken(refreshToken);
+
+        // redis의 최신 refreshToken과 일치하는지 체크
+        if (!refreshTokenRedisService.matches(memberId, refreshToken)) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        // 회원있는지 체크
+        Member member = loginDao.findMemberById(memberId);
+        if (member == null) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        // 로그인 가능여부 서비스 정책 체크
+        checkLoginAllowed(member);
+
+        // 검증 끝 새 accessToken 발급
+        String newAccessToken = jwtService.createAccessToken(member);
+        // dto에 담기
+        LoginMemberResponse loginMemberResponse = toLoginMemberResponse(member);
+
+        // 새 accessToken, 기존 refreshToken, 회원묶음 반환
+        return new LoginResult(
+                newAccessToken,
+                refreshToken,
+                loginMemberResponse
+        );
     }
 }
