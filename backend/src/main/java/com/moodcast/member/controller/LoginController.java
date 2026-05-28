@@ -10,8 +10,11 @@ import com.moodcast.member.dto.follow.FollowCheckResponse;
 import com.moodcast.member.dto.follow.FollowItemResponse;
 import com.moodcast.member.service.LoginService;
 import com.moodcast.member.service.JwtService;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpRequest;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -129,5 +132,29 @@ public class LoginController {
                                 "message", "로그아웃되었습니다."
                         )
                 );
+    }
+
+    @PostMapping("refresh")
+    public ResponseEntity<?> refresh(HttpServletRequest request) {
+        String refreshToken = null;
+
+        if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if (jwtService.getRefreshCookieName().equals(cookie.getName())) {
+                    refreshToken = cookie.getValue();
+                    break;
+                }
+            }
+        }
+
+        LoginResult result = loginService.refreshAccessToken(refreshToken);
+
+        LoginResponse response = new LoginResponse(
+                true,
+                "토큰 재발급 성공",
+                result.getAccessToken(),
+                result.getMember()
+        );
+        return ResponseEntity.ok(response);
     }
 }
