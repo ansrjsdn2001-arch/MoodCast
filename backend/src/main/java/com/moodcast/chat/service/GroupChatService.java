@@ -163,9 +163,13 @@ public class GroupChatService {
         chatMessageVo.setSenderId(request.getSenderId());
         chatMessageVo.setContent(content);
         chatMessageVo.setDeletedYn("N");
+        chatMessageVo.setEventType("CHAT_MESSAGE"); // 추가
         groupChatMapper.insertChatMessage(chatMessageVo);
 
         ChatMessageVo savedMessage = groupChatMapper.selectChatMessageById(chatMessageVo.getMessageId());
+        if (savedMessage != null) {
+            savedMessage.setEventType("CHAT_MESSAGE");
+        }
         return toMessageResponse(savedMessage);
     }
 
@@ -273,8 +277,8 @@ public class GroupChatService {
                 message.getContent(),
                 message.getCreatedAt(),
                 message.getReadCount(),
-            message.getUnreadCount(),
-            message.getEventType()
+                message.getUnreadCount(),
+                message.getEventType()
         );
     }
 
