@@ -261,8 +261,8 @@
 /* 감정 통계 섹션 스타일 */
 .moodStatsContainer {
   display: grid;
-  grid-template-columns: 220px 1fr 180px;
-  gap: 28px;
+  grid-template-columns: 220px minmax(0, 1fr) 260px;
+  gap: 32px;
   align-items: center;
 }
 
@@ -334,15 +334,15 @@
 .moodStatsInfo {
   display: grid;
   gap: 14px;
-  padding: 14px 0;
+  padding: 10px 4px 10px 0;
 }
 
 .moodStatItem {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px;
-  border-radius: 10px;
+  padding: 16px 14px;
+  border-radius: 14px;
   background: rgba(0, 0, 0, 0.02);
   transition: all 0.2s ease;
 }
@@ -352,7 +352,7 @@
 }
 
 .moodStatLabel {
-  font-size: 0.7rem;
+  font-size: 0.66rem;
   color: #98a2b3;
   text-transform: uppercase;
   letter-spacing: 0.6px;
@@ -360,8 +360,8 @@
 }
 
 .moodStatValue {
-  font-size: 1.3rem;
-  font-weight: 800;
+  font-size: 1.6rem;
+  font-weight: 900;
   color: #111827;
   line-height: 1.2;
   text-align: center;
@@ -400,7 +400,7 @@
 
 .moodLegendValue {
   font-size: 0.8rem;
-  color: #667085;
+  color: #475467;
   margin-top: 2px;
 }
 
@@ -485,5 +485,13 @@
 
   .moodStatsInfo {
     grid-template-columns: 1fr;
+  }
+
+  .moodStatItem {
+    padding: 14px 12px;
+  }
+
+  .moodStatValue {
+    font-size: 1.45rem;
   }
 }
