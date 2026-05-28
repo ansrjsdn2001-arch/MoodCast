@@ -1,11 +1,11 @@
 import axios from 'axios';
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import CloseIcon from '@mui/icons-material/Close';
 import { useAuthStore } from '../../stores/useAuthStore';
-import { useIsDesktop } from '../../hooks/useViewportWidth';
-import { DesktopShell } from '../../components/layout/DesktopShell';
-import { MobileShell } from '../../components/layout/MobileShell';
 import { FeedCard } from '../../components/common/FeedCard';
+import { PostDetailComments } from '../../components/common/PostDetailComments';
 import styles from './PostDetailPage.module.css';
 
 function normalizeContent(content) {
@@ -41,27 +41,44 @@ function formatTime(dateString) {
 export function PostDetailPage() {
   const { postId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { accessToken } = useAuthStore();
-  const desktop = useIsDesktop();
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [commentCount, setCommentCount] = useState(0);
+  const [commentsReady, setCommentsReady] = useState(false);
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
+  const shouldAutoFocusComments = useMemo(
+    () =>
+      searchParams.get('comments') === '1' ||
+      searchParams.get('comments') === 'open' ||
+      Boolean(location.state?.openComments),
+    [location.state?.openComments, searchParams],
+  );
+  const targetCommentId = useMemo(
+    () => location.state?.notificationCommentId || searchParams.get('commentId') || null,
+    [location.state?.notificationCommentId, searchParams],
+  );
 
   useEffect(() => {
     if (!postId) return;
+
     setLoading(true);
-    axios.get(`${BACKSERVER}/posts/${postId}`, {
-      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
-    })
+    axios
+      .get(`${BACKSERVER}/posts/${postId}`, {
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      })
       .then((res) => {
         const item = res.data;
         if (item.success === false) {
           setPost(null);
           return;
         }
+
         const data = item;
-        const authorName = data.author || data.nickname || '익명';
-        setPost({
+        const authorName = data.author || data.nickname || '사용자';
+        const nextPost = {
           id: data.postId,
           postId: data.postId,
           memberId: data.memberId,
@@ -83,7 +100,10 @@ export function PostDetailPage() {
           tags: data.tags ?? '',
           imageSrc: data.imageSrc ?? data.image ?? data.cover ?? data.thumbnail,
           imageAlt: data.imageAlt || data.author,
-        });
+        };
+
+        setPost(nextPost);
+        setCommentCount(nextPost.comments);
       })
       .catch((err) => {
         console.error('게시물 상세 조회 실패:', err);
@@ -92,20 +112,131 @@ export function PostDetailPage() {
       .finally(() => setLoading(false));
   }, [BACKSERVER, accessToken, postId]);
 
+  useEffect(() => {
+    if (loading || !post) {
+      setCommentsReady(false);
+      return undefined;
+    }
+
+    const timerId = window.setTimeout(() => {
+      setCommentsReady(true);
+      if (shouldAutoFocusComments) {
+        const anchor = document.getElementById('post-comments-anchor');
+        if (anchor) {
+          anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    }, 150);
+
+    return () => window.clearTimeout(timerId);
+  }, [loading, post, shouldAutoFocusComments]);
+
+  useEffect(() => {
+    if (!post) return undefined;
+
+    const { body, documentElement } = document;
+    const prevBodyOverflow = body.style.overflow;
+    const prevHtmlOverflow = documentElement.style.overflow;
+    body.style.overflow = 'hidden';
+    documentElement.style.overflow = 'hidden';
+
+    return () => {
+      body.style.overflow = prevBodyOverflow;
+      documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, [post]);
+
+  const closeDetail = () => {
+    navigate('/app/feed', { replace: true });
+  };
+
+  const handleCommentButtonClick = () => {
+    const anchor = document.getElementById('post-comments-anchor');
+    if (anchor) {
+      anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   const content = (
-    <section className={styles.wrap}>
+    <div className={styles.page}>
       {loading ? (
-        <div className={styles.loader}>게시물 정보를 불러오는 중입니다...</div>
+        <div className={styles.loader}>게시물을 불러오는 중입니다...</div>
       ) : post ? (
-        <div className={styles.detailCard}>
-          <FeedCard post={post} />
-        </div>
-      ) : (
-        <div className={styles.empty}>게시물을 찾을 수 없습니다.</div>
-      )}
-    </section>
+        <>
+          <div className={styles.detailCard}>
+            <FeedCard
+              post={{ ...post, comments: commentCount }}
+              initialCommentOpen={false}
+              onCommentClick={handleCommentButtonClick}
+            />
+          </div>
+          <div id="post-comments-anchor" className={styles.commentPanel}>
+            {commentsReady ? (
+              <PostDetailComments
+                post={post}
+                onCommentCountChange={setCommentCount}
+                targetCommentId={targetCommentId}
+              />
+            ) : null}
+          </div>
+        </>
+      ) : null}
+    </div>
   );
 
-  if (!desktop) return <MobileShell title="게시물" hideSearch>{content}</MobileShell>;
-  return <DesktopShell>{content}</DesktopShell>;
+  if (!post && !loading) {
+    return createPortal(
+      <div className={styles.overlay} role="presentation">
+        <section className={styles.modal} role="dialog" aria-modal="true">
+          <header className={styles.modalHeader}>
+            <div>
+              <strong>게시물 상세보기</strong>
+              <p>찾을 수 없는 게시물입니다.</p>
+            </div>
+            <button
+              type="button"
+              className={styles.closeButton}
+              onClick={(event) => {
+                event.stopPropagation();
+                closeDetail();
+              }}
+              aria-label="닫기"
+            >
+              <CloseIcon />
+            </button>
+          </header>
+        </section>
+      </div>,
+      document.body,
+    );
+  }
+
+  return createPortal(
+    <div className={styles.overlay} role="presentation">
+      <section className={styles.modal} role="dialog" aria-modal="true">
+        <header className={styles.modalHeader}>
+          <div>
+            <strong>게시물 상세보기</strong>
+            <p>{post?.author || '게시물'}</p>
+          </div>
+          <button
+            type="button"
+            className={styles.closeButton}
+            onClick={(event) => {
+              event.stopPropagation();
+              closeDetail();
+            }}
+            aria-label="닫기"
+          >
+            <CloseIcon />
+          </button>
+        </header>
+
+        <div className={styles.modalBody}>
+          {content}
+        </div>
+      </section>
+    </div>,
+    document.body,
+  );
 }

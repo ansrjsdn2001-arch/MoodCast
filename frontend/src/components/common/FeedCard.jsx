@@ -124,7 +124,7 @@ function stripHtml(html) {
   return textarea.value;
 }
 
-export function FeedCard({ post, compact = false }) {
+export function FeedCard({ post, compact = false, initialCommentOpen = false, onCommentClick }) {
   const navigate = useNavigate();
   const { member, accessToken: storeToken } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
@@ -146,6 +146,8 @@ export function FeedCard({ post, compact = false }) {
   const [saved, setSaved] = useState(post.savedByMe ?? false);
   const moreButtonRef = useRef(null);
   const menuRef = useRef(null);
+  const hasAutoOpenedCommentsRef = useRef(false);
+  const postId = post.id ?? post.postId;
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -196,14 +198,33 @@ export function FeedCard({ post, compact = false }) {
 
   const openCommentModal = async (event) => {
     event?.stopPropagation();
+    if (onCommentClick) {
+      onCommentClick();
+      return;
+    }
     setSelectedPost({
       ...post,
       imageSrc: imageSrc,
       text: cardText,
     });
-    await fetchComments(postId);
     setIsCommentModalOpen(true);
+    await fetchComments(postId);
   };
+
+  useEffect(() => {
+    if (!initialCommentOpen || hasAutoOpenedCommentsRef.current || !postId) {
+      return;
+    }
+
+    hasAutoOpenedCommentsRef.current = true;
+    const timerId = window.setTimeout(() => {
+      openCommentModal();
+    }, 120);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [initialCommentOpen, postId]);
 
   const closeCommentModal = () => {
     setSelectedPost(null);
@@ -214,8 +235,6 @@ export function FeedCard({ post, compact = false }) {
     event?.stopPropagation();
     setMenuOpen(!menuOpen);
   };
-
-  const postId = post.id ?? post.postId;
 
   const handleCardClick = () => {
     const postId = post.id ?? post.postId;
