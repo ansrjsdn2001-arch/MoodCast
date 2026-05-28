@@ -103,7 +103,7 @@ export function PostDetailPage() {
         const rawContent = data.content ?? data.body ?? "";
         const memberId =
           data.memberId ?? data.member_id ?? data.authorId ?? data.author_id;
-        setPost({
+        const nextPost = {
           id: data.postId,
           postId: data.postId,
           memberId,
@@ -153,7 +153,7 @@ export function PostDetailPage() {
             ]),
           ).filter(Boolean),
           imageAlt: data.imageAlt || data.author,
-        });
+        };
 
         setPost(nextPost);
         setCommentCount(nextPost.comments);
