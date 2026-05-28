@@ -5,9 +5,16 @@ import lombok.Data;
 @Data
 public class PostSummary {
     private Long postId;
+    private Long memberId;
     private String author;
     private String title;
     private String content;
     private Long emotionId;
     private String createdAt;
+    private String tags;
+    private Long likes;
+    private Long comments;
+    private Boolean likedByMe;
+    private Boolean savedByMe;
+    private String profileImageUrl;
 }

@@ -1,12 +1,20 @@
 package com.moodcast.admin.controller;
 
 import com.moodcast.admin.service.AdminService;
+import com.moodcast.admin.vo.AdminActionLogView;
+import com.moodcast.admin.vo.AdminContentPost;
 import com.moodcast.admin.vo.AdminDashboardSummary;
 import com.moodcast.admin.vo.AdminMember;
+import com.moodcast.admin.vo.AdminMemberDetail;
+import com.moodcast.admin.vo.AdminMemberSuspendRequest;
 import com.moodcast.admin.vo.AdminProfile;
 import com.moodcast.admin.vo.AdminProfileUpdateRequest;
 import com.moodcast.admin.vo.AdminRoleUpdateRequest;
+import com.moodcast.admin.vo.AdminUserManagementSummary;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -40,6 +48,8 @@ import java.util.Map;
 @RestController // 이 클래스가 JSON 응답을 반환하는 REST API 컨트롤러라는 뜻입니다.
 @RequestMapping("/admin/api") // 관리자 API 주소의 공통 시작 경로입니다.
 public class AdminController {
+
+    private static final Logger log = LoggerFactory.getLogger(AdminController.class);
 
     @Autowired // Spring이 AdminService 객체를 자동으로 연결해줍니다.
     private AdminService adminService;
@@ -80,28 +90,226 @@ public class AdminController {
     public Map<String, List<AdminMember>> getMembers(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader
     ) {
+        log.info("[ADMIN_API] GET /admin/api/members requested");
         return Map.of("members", adminService.getMembers(authorizationHeader));
     }
 
     /* ==========================================================================
-     * 관리자 승급 대상 회원 검색 API
+     * 콘텐츠 관리 게시글 목록 조회 API
      * --------------------------------------------------------------------------
-     * 관리자 추가 페이지에서 기존 회원을 이메일 또는 실명으로 검색할 때 사용합니다.
+     * 콘텐츠 관리 페이지에서 게시글 카드를 출력하기 위한 게시글 목록을 조회합니다.
      *
      * 요청 주소:
-     * - GET /admin/api/members/search?searchType=email&keyword=test@example.com
-     * - GET /admin/api/members/search?searchType=name&keyword=문건우
+     * - GET /admin/api/content/posts
+     *
+     * 응답:
+     * - { "posts": [...] }
+     * ========================================================================== */
+    @GetMapping("/content/posts")
+    public Map<String, List<AdminContentPost>> getAdminContentPosts(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
+    ) {
+        log.info("[ADMIN_API] GET /admin/api/content/posts requested");
+        return Map.of("posts", adminService.getAdminContentPosts(authorizationHeader));
+    }
+
+    /*
+     * 게시글 숨김 처리 API
+     * --------------------------------------------------------------------------
+     * 관리자 콘텐츠 관리 카드의 "숨김" 버튼에서 호출합니다.
+     * 삭제가 아니라 visibility만 PRIVATE로 바꾸고, 변경된 게시글 한 건을 돌려줍니다.
+     */
+    @PutMapping("/content/posts/{postId}/hide")
+    public Map<String, Object> hideAdminContentPost(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long postId
+    ) {
+        return Map.of(
+                "success", true,
+                "post", adminService.hideAdminContentPost(authorizationHeader, postId)
+        );
+    }
+
+    /*
+     * 게시글 숨김 복구 API
+     * --------------------------------------------------------------------------
+     * 숨김 상태 게시글의 "복구" 버튼에서 호출합니다.
+     */
+    @PutMapping("/content/posts/{postId}/visibility/restore")
+    public Map<String, Object> restoreHiddenAdminContentPost(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long postId
+    ) {
+        return Map.of(
+                "success", true,
+                "post", adminService.restoreHiddenAdminContentPost(authorizationHeader, postId)
+        );
+    }
+
+    /*
+     * 게시글 삭제 상태 전환 API
+     * --------------------------------------------------------------------------
+     * 처음 삭제는 post_tbl.deleted_yn을 Y로 바꿔 삭제 탭으로 보내는 soft delete입니다.
+     */
+    @PutMapping("/content/posts/{postId}/delete")
+    public Map<String, Object> softDeleteAdminContentPost(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long postId
+    ) {
+        return Map.of(
+                "success", true,
+                "post", adminService.softDeleteAdminContentPost(authorizationHeader, postId)
+        );
+    }
+
+    /*
+     * 삭제 게시글 복구 API
+     * --------------------------------------------------------------------------
+     * 삭제 탭의 "복구" 버튼에서 호출합니다.
+     */
+    @PutMapping("/content/posts/{postId}/delete/restore")
+    public Map<String, Object> restoreDeletedAdminContentPost(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long postId
+    ) {
+        return Map.of(
+                "success", true,
+                "post", adminService.restoreDeletedAdminContentPost(authorizationHeader, postId)
+        );
+    }
+
+    /*
+     * 게시글 완전 삭제 API
+     * --------------------------------------------------------------------------
+     * 삭제 탭의 "완전 삭제" 버튼에서만 호출합니다.
+     */
+    @DeleteMapping("/content/posts/{postId}/delete/permanent")
+    public Map<String, Object> hardDeleteAdminContentPost(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long postId
+    ) {
+        adminService.hardDeleteAdminContentPost(authorizationHeader, postId);
+
+        return Map.of("success", true);
+    }
+
+    /* ==========================================================================
+     * 사용자 관리 하단 요약 조회 API
+     * --------------------------------------------------------------------------
+     * 사용자 관리 페이지 하단 영역에 필요한 정보를 한 번에 조회합니다.
+     *
+     * 응답에 포함되는 값:
+     * - 전체/일반/관리자/정지 회원 수
+     * - 가장 최근 가입 회원 1명
+     * - 가장 최근 제재 회원 1명
+     * - 최근 권한 변경/정지/해제 로그
+     * ========================================================================== */
+    @GetMapping("/members/management-summary")
+    public AdminUserManagementSummary getUserManagementSummary(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
+    ) {
+        log.info("[ADMIN_API] GET /admin/api/members/management-summary requested");
+        return adminService.getUserManagementSummary(authorizationHeader);
+    }
+
+    @GetMapping("/members/action-logs")
+    public Map<String, List<AdminActionLogView>> getAllAdminActionLogs(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
+    ) {
+        log.info("[ADMIN_API] GET /admin/api/members/action-logs requested");
+        return Map.of("actionLogs", adminService.getAllAdminActionLogs(authorizationHeader));
+    }
+
+    /* ==========================================================================
+     * 회원 상세 정보 조회 API
+     * --------------------------------------------------------------------------
+     * 사용자 관리 페이지에서 "회원 정보 전체 보기" 버튼을 눌렀을 때 사용하는 API입니다.
+     *
+     * 요청 주소:
+     * - GET /admin/api/members/{memberId}
+     *
+     * 응답 기준:
+     * - members 테이블에 저장된 개인정보 관련 값을 반환합니다.
+     * - password_hash는 절대 반환하지 않습니다.
+     * ========================================================================== */
+    @GetMapping("/members/{memberId}")
+    public AdminMemberDetail getMemberDetail(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long memberId
+    ) {
+        return adminService.getMemberDetail(authorizationHeader, memberId);
+    }
+
+    /* ==========================================================================
+     * 회원 정지 처리 API
+     * --------------------------------------------------------------------------
+     * 사용자 관리 패널에서 일시 정지 또는 영구 정지를 확정했을 때 호출됩니다.
+     *
+     * 요청 주소:
+     * - PUT /admin/api/members/{memberId}/suspend
+     *
+     * 요청 body 예시:
+     * - { "suspendType": "TEMPORARY", "suspendDays": 7 }
+     * - { "suspendType": "TEMPORARY", "suspendedUntil": "2026-06-08" }
+     * - { "suspendType": "PERMANENT" }
+     * ========================================================================== */
+    @PutMapping("/members/{memberId}/suspend")
+    public Map<String, Object> suspendMember(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long memberId,
+            @RequestBody AdminMemberSuspendRequest request
+    ) {
+        return Map.of(
+                "success", true,
+                "message", "회원 정지 처리가 완료되었습니다.",
+                "member", adminService.suspendMember(authorizationHeader, memberId, request)
+        );
+    }
+
+    /* ==========================================================================
+     * 회원 정지 해제 API
+     * --------------------------------------------------------------------------
+     * 사용자 관리 패널에서 정지된 회원의 "정지 해제" 버튼을 눌렀을 때 호출합니다.
+     *
+     * 요청 주소:
+     * - PUT /admin/api/members/{memberId}/restore
+     * ========================================================================== */
+    @PutMapping("/members/{memberId}/restore")
+    public Map<String, Object> restoreSuspendedMember(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long memberId
+    ) {
+        return Map.of(
+                "success", true,
+                "message", "회원 정지 해제가 완료되었습니다.",
+                "member", adminService.restoreSuspendedMember(authorizationHeader, memberId)
+        );
+    }
+
+    /* ==========================================================================
+     * 관리자 권한 관리 대상 회원 검색 API
+     * --------------------------------------------------------------------------
+     * 관리자 권한 관리 페이지에서 기존 회원을 이메일 또는 실명으로 검색할 때 사용합니다.
+     *
+     * 요청 주소:
+     * - GET /admin/api/members/admin-promotion/search?searchType=email&keyword=test@example.com
+     * - GET /admin/api/members/admin-promotion/search?searchType=name&keyword=문건우
      *
      * searchType 값:
      * - email: members.email 기준 검색
      * - name: members.name 기준 검색
      * ========================================================================== */
-    @GetMapping("/members/search")
+    @GetMapping("/members/admin-promotion/search")
     public Map<String, List<AdminMember>> searchMembersForAdminPromotion(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
             @RequestParam(defaultValue = "email") String searchType,
             @RequestParam(defaultValue = "") String keyword
     ) {
+        log.info(
+                "[ADMIN_API] GET /admin/api/members/admin-promotion/search requested searchType={} keywordLength={}",
+                searchType,
+                keyword == null ? 0 : keyword.length()
+        );
         return Map.of(
                 "members",
                 adminService.searchMembersForAdminPromotion(authorizationHeader, searchType, keyword)
@@ -111,12 +319,13 @@ public class AdminController {
     /* ==========================================================================
      * 회원 관리자 등급 변경 API
      * --------------------------------------------------------------------------
-     * 관리자 추가 페이지에서 선택한 ACTIVE 일반 회원을 관리자 등급으로 변경합니다.
+     * 관리자 권한 관리 페이지에서 선택한 ACTIVE 회원을 일반 회원 또는 관리자 등급으로 변경합니다.
      *
      * 요청 주소:
      * - PUT /admin/api/members/{memberId}/role
      *
      * 요청 body:
+     * - { "role": "USER" }
      * - { "role": "NORMAL_ADMIN" }
      * - { "role": "SUPER_ADMIN" }
      * ========================================================================== */

@@ -3,11 +3,13 @@ import { MobileShell } from '../../components/layout/MobileShell';
 import { ComposerCard } from '../../components/common/ComposerCard';
 import { FeedCard } from '../../components/common/FeedCard';
 import { useEffect, useState } from 'react';
+import { useAuthStore } from '../../stores/useAuthStore';
 import styles from './MobileFeedPage.module.css';
 
 export function MobileFeedPage() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { accessToken } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
   const normalizeContent = (content) => {
@@ -65,20 +67,31 @@ export function MobileFeedPage() {
 
   useEffect(() => {
     setLoading(true);
-    axios.get(`${BACKSERVER}/posts`)
+    axios.get(`${BACKSERVER}/posts`, {
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+    })
       .then((response) => {
         const items = response.data?.results || [];
         setPosts(items.map((item) => ({
           id: item.postId,
+          postId: item.postId,
+          memberId: item.memberId ?? item.member_id,
+          profileLink: (item.memberId ?? item.member_id) ? `/app/user/${item.memberId ?? item.member_id}` : null,
           title: item.title,
           author: item.author,
+          profileImageUrl: item.profileImageUrl ?? item.profile_image_url ?? null,
           avatar: item.author ? item.author.charAt(0).toUpperCase() : '?',
           time: formatTime(item.createdAt),
           text: normalizeContent(item.content),
+          content: item.content,
           emotionId: item.emotionId,
-          commentsList: [],
-          likes: 0,
-          vibes: 0,
+          comments: item.comments ?? item.commentsCount ?? 0,
+          commentsList: item.commentsList ?? [],
+          likes: item.likes ?? 0,
+          vibes: item.vibes ?? 0,
+          likedByMe: item.likedByMe,
+          savedByMe: item.savedByMe,
+          tags: item.tags ?? '',
           previewComment: null,
         })));
       })
@@ -87,7 +100,7 @@ export function MobileFeedPage() {
         setPosts([]);
       })
       .finally(() => setLoading(false));
-  }, [BACKSERVER]);
+  }, [BACKSERVER, accessToken]);
 
   return (
     <MobileShell title="MoodCast">

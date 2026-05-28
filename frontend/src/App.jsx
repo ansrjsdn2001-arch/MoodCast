@@ -6,7 +6,7 @@ import { SavedPage } from './pages/Saved/SavedPage';
 import { MoodChatPage } from './pages/MoodChat/MoodChatPage';
 import { ProfilePage } from './pages/Profile/ProfilePage';
 import { ProfileEditPage } from './pages/Profile/ProfileEditPage';
-import { PostEditPage } from './pages/PostEdit/PostEditPage';
+import { EditPostPage } from './pages/PostEdit/EditPostPage';
 import { FollowersPage } from './pages/Follow/FollowersPage';
 import { FollowingPage } from './pages/Follow/FollowingPage';
 import { SettingsPage } from './pages/Settings/SettingsPage';
@@ -23,6 +23,7 @@ import { useAuthStore } from './stores/useAuthStore';
 function AppRoutes() {
   const desktop = useIsDesktop();
   const { accessToken, setAuthData, clearAuthData } = useAuthStore();
+  const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
 
   /*
     새로고침 후 sessionStorage에 남아있는 accessToken이
@@ -34,7 +35,7 @@ function AppRoutes() {
     }
 
     axios
-      .get(`${import.meta.env.VITE_BACKSERVER}/auth/me`, {
+      .get(`${BACKSERVER}/auth/me`, {
         headers: {
           Authorization: "Bearer " + accessToken,
         },
@@ -63,11 +64,12 @@ function AppRoutes() {
       <Route path="/app/saved" element={<SavedPage />} />
       <Route path="/app/mood-chat" element={<MoodChatPage />} />
       <Route path="/app/chat" element={<MoodChatPage />} />
+      <Route path="/app/group-chat" element={<Navigate to="/app/mood-chat" replace />} />
       {/* 마이페이지와 유저페이지를 ProfilePage 하나로 통합함 */}
       <Route path="/app/profile" element={<ProfilePage />} />
       <Route path="/app/profile-mobile" element={<ProfilePage />} />
       <Route path="/app/profile/edit" element={<ProfileEditPage />} />
-      <Route path="/app/post/edit/:postId" element={<PostEditPage />} />
+      <Route path="/app/post/edit/:postId" element={<EditPostPage />} />
       <Route path="/app/followers" element={<FollowersPage />} />
       <Route path="/app/followers/:memberId" element={<FollowersPage />} />
       <Route path="/app/following" element={<FollowingPage />} />
