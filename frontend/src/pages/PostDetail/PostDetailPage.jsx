@@ -269,8 +269,7 @@ export function PostDetailPage() {
       <section className={styles.modal} role="dialog" aria-modal="true">
         <header className={styles.modalHeader}>
           <div>
-            <strong>게시물 상세보기</strong>
-            <p>{post?.author || "게시물"}</p>
+            <strong>{post?.author || "게시물"} 님의 게시물</strong>
           </div>
           <button
             type="button"

@@ -258,19 +258,18 @@ export function FeedCard({ post, compact = false, initialCommentOpen = false, on
     }
   };
 
-  const openCommentModal = async (event) => {
+  const handleCommentClick = async (event) => {
     event?.stopPropagation();
     if (onCommentClick) {
       onCommentClick();
       return;
     }
-    setSelectedPost({
-      ...post,
-      imageSrc: imageSrc,
-      text: cardText,
+
+    navigate(`/app/post/${postId}?comments=1`, {
+      state: {
+        openComments: true,
+      },
     });
-    setIsCommentModalOpen(true);
-    await fetchComments(postId);
   };
 
   useEffect(() => {
@@ -279,8 +278,8 @@ export function FeedCard({ post, compact = false, initialCommentOpen = false, on
     }
 
     hasAutoOpenedCommentsRef.current = true;
-    const timerId = window.setTimeout(() => {
-      openCommentModal();
+      const timerId = window.setTimeout(() => {
+      handleCommentClick();
     }, 120);
 
     return () => {
@@ -718,7 +717,7 @@ export function FeedCard({ post, compact = false, initialCommentOpen = false, on
               )}
               {likesCount}
             </button>
-            <button type="button" className={styles.reactionButton} onClick={openCommentModal}>
+            <button type="button" className={styles.reactionButton} onClick={handleCommentClick}>
               <ChatBubbleOutlineIcon className={styles.actionIcon} />
               {commentCount}
             </button>
