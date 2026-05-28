@@ -124,4 +124,28 @@ public class JwtService {
                 .maxAge(0)
                 .build();
     }
+
+    public Long getMemberIdFromRefreshToken(String refreshToken) {
+
+        // 토큰 유무 및 공백 검증
+        if (refreshToken == null || refreshToken.trim().isEmpty()) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        try {
+            // 토큰 파싱
+            Claims claims = parseToken(refreshToken);
+            // 토큰 타입 검증
+            String tokenType = claims.get("type", String.class);
+
+
+            if (!"REFRESH".equals(tokenType)) {
+                throw new IllegalArgumentException("로그인이 필요합니다.");
+            }
+
+            return Long.parseLong(claims.getSubject());
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+    }
 }

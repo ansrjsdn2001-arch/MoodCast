@@ -26,6 +26,9 @@ public class LoginService {
     private MemberValidationService memberValidationService;
 
     @Autowired
+    private RefreshTokenRedisService refreshTokenRedisService;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -102,6 +105,13 @@ public class LoginService {
 
         String accessToken = jwtService.createAccessToken(member);
         String refreshToken = jwtService.createRefreshToken(member);
+
+        refreshTokenRedisService.saveRefreshToken(
+                member.getMemberId(),
+                refreshToken,
+                jwtService.getRefreshTokenMaxAgeSeconds()
+        );
+
         LoginMemberResponse loginMemberResponse = toLoginMemberResponse(member);
 
         LoginResult loginResult = new LoginResult(
@@ -112,6 +122,8 @@ public class LoginService {
 
         return loginResult;
     }
+
+
 
     public LoginMemberResponse getLoginMember(String accessToken) {
         if (accessToken == null || accessToken.trim().isEmpty()) {
