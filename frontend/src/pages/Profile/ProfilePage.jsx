@@ -66,6 +66,7 @@ export function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(true);
+  const [selectedMoodFilter, setSelectedMoodFilter] = useState(null);
   const [moodStats, setMoodStats] = useState([]);
   const [moodStatsLoading, setMoodStatsLoading] = useState(false);
   const [hoveredEmotion, setHoveredEmotion] = useState(null); // 호버 상태 관리
@@ -79,6 +80,11 @@ export function ProfilePage() {
     weeklyReactions: 0,
   });
   
+  const filteredPosts = useMemo(() => {
+    if (!selectedMoodFilter) return posts;
+    return posts.filter((post) => String(post.emotionId) === String(selectedMoodFilter));
+  }, [posts, selectedMoodFilter]);
+
   const { member: currentMember, accessToken: token, isLoggedIn } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
@@ -656,13 +662,35 @@ export function ProfilePage() {
             </button>
           )}
         </div>
+        <div className={styles.moodFilterBar}>
+          <button
+            type="button"
+            className={`${styles.moodFilterChip} ${selectedMoodFilter === null ? styles.activeMoodFilter : ''}`}
+            onClick={() => setSelectedMoodFilter(null)}
+          >
+            전체
+          </button>
+          {Object.entries(EMOTION_CONFIG).map(([emotionId, emotion]) => (
+            <button
+              key={emotionId}
+              type="button"
+              className={`${styles.moodFilterChip} ${String(selectedMoodFilter) === String(emotionId) ? styles.activeMoodFilter : ''}`}
+              style={{ borderColor: emotion.color, color: selectedMoodFilter === Number(emotionId) ? '#111827' : emotion.color }}
+              onClick={() => setSelectedMoodFilter(Number(emotionId))}
+            >
+              {emotion.label}
+            </button>
+          ))}
+        </div>
         <div className={styles.postList}>
           {postsLoading ? (
             <div className={styles.emptyState}>게시물을 불러오는 중입니다...</div>
-          ) : posts.length > 0 ? (
-            posts.map((post) => (
+          ) : filteredPosts.length > 0 ? (
+            filteredPosts.map((post) => (
               <FeedCard key={post.postId} post={post} compact />
             ))
+          ) : posts.length > 0 ? (
+            <div className={styles.emptyState}>선택한 무드의 게시물이 없습니다.</div>
           ) : (
             <div className={styles.emptyState}>작성한 게시물이 없습니다.</div>
           )}
