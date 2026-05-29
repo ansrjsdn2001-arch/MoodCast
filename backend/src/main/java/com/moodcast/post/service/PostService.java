@@ -160,18 +160,25 @@ public class PostService {
         List<CommentSummary> parents = postDao.selectCommentsByPostId(postId);
         List<CommentSummary> replies = postDao.selectRepliesByPostId(postId);
 
-        // replies를 parentCommentId 기준으로 부모에 붙이기
-        java.util.Map<Long, CommentSummary> parentMap = new java.util.LinkedHashMap<>();
+        // 모든 댓글 객체를 맵에 저장하고 replies 리스트를 초기화함
+        java.util.Map<Long, CommentSummary> commentMap = new java.util.LinkedHashMap<>();
         for (CommentSummary p : parents) {
             p.setReplies(new java.util.ArrayList<>());
-            parentMap.put(p.getCommentId(), p);
+            commentMap.put(p.getCommentId(), p);
         }
         for (CommentSummary r : replies) {
-            CommentSummary parent = parentMap.get(r.getParentCommentId());
+            r.setReplies(new java.util.ArrayList<>());
+            commentMap.put(r.getCommentId(), r);
+        }
+
+        // 각각의 댓글을 parentCommentId 기준으로 부모에 붙임
+        for (CommentSummary r : replies) {
+            CommentSummary parent = commentMap.get(r.getParentCommentId());
             if (parent != null) {
                 parent.getReplies().add(r);
             }
         }
+
         return parents;
     }
 
@@ -432,6 +439,14 @@ public class PostService {
             throw new IllegalArgumentException("본인이 작성한 댓글만 삭제할 수 있습니다.");
         }
 
+        cascadeDeleteComment(commentId);
+    }
+
+    private void cascadeDeleteComment(Long commentId) {
+        List<Long> childIds = postDao.selectChildCommentIds(commentId);
+        for (Long childId : childIds) {
+            cascadeDeleteComment(childId);
+        }
         postDao.deleteComment(commentId);
     }
 }

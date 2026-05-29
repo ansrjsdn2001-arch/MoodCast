@@ -60,6 +60,7 @@ export function PostDetailComments({ post, onCommentCountChange, targetCommentId
         const response = await axios.get(`${BACKSERVER}/posts/${postId}/comments`);
         const items = response.data?.results || [];
         if (!active) return;
+
         setLocalComments(items.map((item) => normalizeCommentItem(item, member)));
       } catch (error) {
         if (!active) return;
@@ -73,6 +74,34 @@ export function PostDetailComments({ post, onCommentCountChange, targetCommentId
       active = false;
     };
   }, [BACKSERVER, member, postId]);
+
+  useEffect(() => {
+    const collectExpandableIds = (items, ids = []) => {
+      for (const item of items) {
+        if (item.replies?.length > 0) {
+          const id = item.commentId ?? item.id;
+          if (id != null) {
+            ids.push(String(id));
+          }
+          collectExpandableIds(item.replies, ids);
+        }
+      }
+      return ids;
+    };
+
+    const expandableIds = collectExpandableIds(localComments);
+    if (expandableIds.length === 0) {
+      return;
+    }
+
+    setExpandedReplies((prev) => {
+      const next = { ...prev };
+      expandableIds.forEach((id) => {
+        next[id] = true;
+      });
+      return next;
+    });
+  }, [localComments]);
 
   useEffect(() => {
     if (!menuOpenId) return undefined;
@@ -153,6 +182,11 @@ export function PostDetailComments({ post, onCommentCountChange, targetCommentId
     if (link) navigate(link);
   };
 
+  const updateCommentContent = (comments, commentId, newContent) => comments.map((item) => {
+    if (item.commentId === commentId) return { ...item, content: newContent };
+    return { ...item, replies: updateCommentContent(item.replies ?? [], commentId, newContent) };
+  });
+
   const handleEditSave = async (commentId) => {
     if (!editText.trim()) return;
 
@@ -163,24 +197,18 @@ export function PostDetailComments({ post, onCommentCountChange, targetCommentId
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
 
-      setLocalComments((prev) => prev.map((item) => {
-        if (item.commentId === commentId) {
-          return { ...item, content: editText.trim() };
-        }
-        return {
-          ...item,
-          replies: (item.replies ?? []).map((reply) =>
-            reply.commentId === commentId ? { ...reply, content: editText.trim() } : reply
-          ),
-        };
-      }));
+      setLocalComments((prev) => updateCommentContent(prev, commentId, editText.trim()));
       setEditingId(null);
     } catch {
       alert('댓글 수정에 실패했습니다.');
     }
   };
 
-  const handleDeleteComment = async (commentId, parentCommentId = null) => {
+  const removeCommentById = (comments, commentId) => comments
+    .filter((item) => item.commentId !== commentId)
+    .map((item) => ({ ...item, replies: removeCommentById(item.replies ?? [], commentId) }));
+
+  const handleDeleteComment = async (commentId) => {
     if (!window.confirm('댓글을 삭제하시겠습니까?')) return;
 
     try {
@@ -188,16 +216,7 @@ export function PostDetailComments({ post, onCommentCountChange, targetCommentId
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 
-      if (parentCommentId) {
-        setLocalComments((prev) => prev.map((item) =>
-          item.commentId === parentCommentId
-            ? { ...item, replies: (item.replies ?? []).filter((reply) => reply.commentId !== commentId) }
-            : item
-        ));
-      } else {
-        setLocalComments((prev) => prev.filter((item) => item.commentId !== commentId));
-      }
-
+      setLocalComments((prev) => removeCommentById(prev, commentId));
       setMenuOpenId(null);
     } catch {
       alert('댓글 삭제에 실패했습니다.');
@@ -320,7 +339,7 @@ export function PostDetailComments({ post, onCommentCountChange, targetCommentId
                   <button
                     type="button"
                     className={styles.danger}
-                    onClick={() => handleDeleteComment(id, parentCommentId)}
+                    onClick={() => handleDeleteComment(id)}
                   >
                     <DeleteOutlineIcon fontSize="small" />
                     삭제
@@ -397,7 +416,7 @@ export function PostDetailComments({ post, onCommentCountChange, targetCommentId
           </div>
         )}
 
-        {expandedReplies[id] && item.replies?.length > 0 && (
+        {item.replies?.length > 0 && expandedReplies[id] && (
           <div className={styles.repliesList}>
             {item.replies.map((reply) => renderCommentItem(reply, id))}
           </div>

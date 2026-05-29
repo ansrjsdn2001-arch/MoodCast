@@ -22,6 +22,7 @@ export function HomeFeedPage() {
   const [selectedMoodFilter, setSelectedMoodFilter] = useState(null);
   const { accessToken } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
+  const FEED_SCROLL_KEY = 'moodcast-feed-scroll-y';
 
   useEffect(() => {
     setLoading(true);
@@ -43,6 +44,22 @@ export function HomeFeedPage() {
     if (!selectedMoodFilter) return posts;
     return posts.filter((post) => String(post.emotionId) === String(selectedMoodFilter));
   }, [posts, selectedMoodFilter]);
+
+  useEffect(() => {
+    if (loading) return;
+
+    const savedScrollY = window.sessionStorage.getItem(FEED_SCROLL_KEY);
+    if (savedScrollY == null) return;
+
+    const targetScrollY = Number(savedScrollY);
+    window.sessionStorage.removeItem(FEED_SCROLL_KEY);
+
+    const timerId = window.setTimeout(() => {
+      window.scrollTo({ top: Number.isFinite(targetScrollY) ? targetScrollY : 0, behavior: 'auto' });
+    }, 0);
+
+    return () => window.clearTimeout(timerId);
+  }, [loading, posts.length]);
 
   return (
     <DesktopShell>

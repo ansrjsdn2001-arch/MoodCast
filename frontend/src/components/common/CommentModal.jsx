@@ -44,21 +44,72 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
   }, [open, post]);
 
   useEffect(() => {
-    const normalizeComment = (item) => ({
-      ...item,
-      profileImageUrl: item.profileImageUrl ?? 
-                       item.profile_image_url ?? 
-                       item.avatarUrl ?? 
-                       item.avatar_url ?? 
-                       item.imageUrl ?? 
-                       item.image_url ??
-                       item.photoUrl ??
-                       item.photo ?? null,
-      replies: (item.replies ?? []).map(reply => normalizeComment(reply)),
+    if (!open || !post?.postId) {
+      return undefined;
+    }
+
+    let active = true;
+
+    const loadComments = async () => {
+      try {
+        const response = await axios.get(`${BACKSERVER}/posts/${post.postId}/comments`);
+        const items = response.data?.results || [];
+        if (!active) return;
+
+        const normalizeComment = (item) => ({
+          ...item,
+          profileImageUrl: item.profileImageUrl ??
+                           item.profile_image_url ??
+                           item.avatarUrl ??
+                           item.avatar_url ??
+                           item.imageUrl ??
+                           item.image_url ??
+                           item.photoUrl ??
+                           item.photo ?? null,
+          replies: (item.replies ?? []).map((r) => normalizeComment(r)),
+        });
+
+        setLocalComments(items.map((item) => normalizeComment(item)));
+      } catch (error) {
+        if (!active) return;
+        console.error('댓글을 불러오는 중 오류가 발생했습니다.', error);
+      }
+    };
+
+    loadComments();
+
+    return () => {
+      active = false;
+    };
+  }, [BACKSERVER, open, post?.postId]);
+
+  useEffect(() => {
+    const collectExpandableIds = (items, ids = []) => {
+      for (const item of items) {
+        if (item.replies?.length > 0) {
+          const id = item.commentId ?? item.id;
+          if (id != null) {
+            ids.push(String(id));
+          }
+          collectExpandableIds(item.replies, ids);
+        }
+      }
+      return ids;
+    };
+
+    const expandableIds = collectExpandableIds(localComments);
+    if (expandableIds.length === 0) {
+      return;
+    }
+
+    setExpandedReplies((prev) => {
+      const next = { ...prev };
+      expandableIds.forEach((id) => {
+        next[id] = true;
+      });
+      return next;
     });
-    
-    setLocalComments((comments ?? []).map(item => normalizeComment(item)));
-  }, [comments]);
+  }, [localComments]);
 
   useEffect(() => {
     if (!menuOpenId) return undefined;
@@ -125,13 +176,11 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
       await axios.put(`${BACKSERVER}/posts/comments/${commentId}`, { content: editText.trim() }, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      setLocalComments((prev) => prev.map((c) => {
+      const updateContent = (comments) => comments.map((c) => {
         if (c.commentId === commentId) return { ...c, content: editText.trim() };
-        return {
-          ...c,
-          replies: (c.replies ?? []).map((r) => r.commentId === commentId ? { ...r, content: editText.trim() } : r),
-        };
-      }));
+        return { ...c, replies: updateContent(c.replies ?? []) };
+      });
+      setLocalComments((prev) => updateContent(prev));
       setEditingId(null);
       if (onCommentUpdate) onCommentUpdate();
     } catch {
@@ -358,7 +407,7 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
         )}
 
         {/* 대댓글 목록 */}
-        {expandedReplies[id] && item.replies?.length > 0 && (
+        {item.replies?.length > 0 && expandedReplies[id] && (
           <div className={styles.repliesList}>
             {item.replies.map((reply) => renderCommentItem(reply, id))}
           </div>

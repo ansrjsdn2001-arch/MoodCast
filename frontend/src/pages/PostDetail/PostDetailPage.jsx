@@ -198,6 +198,11 @@ export function PostDetailPage() {
   }, [post]);
 
   const closeDetail = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+
     navigate("/app/feed", { replace: true });
   };
 

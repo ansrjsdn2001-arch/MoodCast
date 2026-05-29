@@ -163,6 +163,7 @@ export function FeedCard({ post, compact = false, initialCommentOpen = false, on
   const menuRef = useRef(null);
   const hasAutoOpenedCommentsRef = useRef(false);
   const postId = post.id ?? post.postId;
+  const FEED_SCROLL_KEY = 'moodcast-feed-scroll-y';
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -270,6 +271,8 @@ export function FeedCard({ post, compact = false, initialCommentOpen = false, on
       return;
     }
 
+    window.sessionStorage.setItem(FEED_SCROLL_KEY, String(window.scrollY || window.pageYOffset || 0));
+
     navigate(`/app/post/${postId}?comments=1`, {
       state: {
         openComments: true,
@@ -304,6 +307,7 @@ export function FeedCard({ post, compact = false, initialCommentOpen = false, on
 
   const handleCardClick = () => {
     const postId = post.id ?? post.postId;
+    window.sessionStorage.setItem(FEED_SCROLL_KEY, String(window.scrollY || window.pageYOffset || 0));
     navigate(`/app/post/${postId}`);
   };
 
