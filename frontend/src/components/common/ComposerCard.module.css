@@ -12,20 +12,6 @@
   cursor: pointer;
 }
 
-.actions {
-  display: none;
-}
-
-.action {
-  display: none;
-}
-
-.video,
-.image,
-.mood {
-  display: none;
-}
-
 .avatar {
   width: 50px;
   height: 50px;
@@ -50,6 +36,8 @@
 }
 
 .input {
+  display: flex;
+  align-items: center;
   height: 48px;
   padding: 0 18px;
   border-radius: 999px;
@@ -60,31 +48,3 @@
   font-size: 0.95rem;
 }
 
-.actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border: 0;
-  border-radius: 11px;
-  background: transparent;
-}
-
-.video {
-  color: #ff0f75;
-}
-
-.image {
-  color: #29a84a;
-}
-
-.mood {
-  color: #ff7a00;
-}
