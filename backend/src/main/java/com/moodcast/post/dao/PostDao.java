@@ -54,6 +54,8 @@ public interface PostDao {
 
     int deleteComment(@Param("commentId") Long commentId);
 
+    List<Long> selectChildCommentIds(@Param("commentId") Long commentId);
+
     CommentSummary selectCommentById(@Param("commentId") Long commentId);
 
     int selectPostLikeByPostAndMember(@Param("postId") Long postId, @Param("memberId") Long memberId);

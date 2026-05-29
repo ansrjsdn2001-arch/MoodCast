@@ -238,7 +238,7 @@
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
   z-index: 100;
   min-width: 100px;
   overflow: hidden;
@@ -363,6 +363,12 @@
 
 .mentionField {
   position: relative;
+  width: 100%;
+}
+
+.mentionField textarea {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .mentionBox {
@@ -451,6 +457,8 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
+
+
 .meta {
   display: flex;
   gap: 12px;
@@ -498,7 +506,6 @@
 }
 
 .composer textarea {
-  width: 100px;
   min-height: 96px;
   padding: 14px 16px;
   border: 1px solid #e6e8f3;

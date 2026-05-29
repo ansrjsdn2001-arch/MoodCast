@@ -364,6 +364,12 @@
         where comment_id = #{commentId}
     </update>
 
+    <select id="selectChildCommentIds" parameterType="long" resultType="long">
+        select comment_id from comment_tbl
+        where parent_id = #{commentId}
+          and deleted_yn = 'N'
+    </select>
+
     <select id="selectPostLikeByPostAndMember" parameterType="map" resultType="int">
         select count(*)
         from user_post_like
