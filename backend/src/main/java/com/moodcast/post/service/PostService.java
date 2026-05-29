@@ -99,7 +99,7 @@ public class PostService {
 
         List<PostMention> mentions = normalizeMentions(postId, request.getMentions());
         persistMentions(postId, mentions);
-        sendMentionNotifications(postId, post, loginMember, mentions);
+        sendMentionNotifications(postId, post.getTitle(), loginMember, mentions);
 
         return postId;
     }
@@ -212,6 +212,65 @@ public class PostService {
 
             messagingTemplate.convertAndSend("/sub/notifications/" + mention.getUserId(), payload);
         }
+    }
+
+    private void sendMentionNotifications(Long postId, String postTitle, LoginMemberResponse author, List<PostMention> mentions) {
+        if (postId == null || author == null || mentions == null || mentions.isEmpty()) {
+            return;
+        }
+
+        Set<String> sentKeys = new LinkedHashSet<>();
+        for (PostMention mention : mentions) {
+            if (mention == null || mention.getUserId() == null || mention.getUserId().equals(author.getMemberId())) {
+                continue;
+            }
+
+            String dedupeKey = mention.getUserId() + ":" + mention.getStartIndex() + ":" + mention.getEndIndex();
+            if (!sentKeys.add(dedupeKey)) {
+                continue;
+            }
+
+            Notification notification = new Notification();
+            notification.setRecipientMemberId(mention.getUserId());
+            notification.setSenderMemberId(author.getMemberId());
+            notification.setNotificationType("MENTION");
+            notification.setTargetType("POST");
+            notification.setTargetId(postId);
+            notification.setTitle(postTitle == null || postTitle.trim().isEmpty() ? "새 멘션" : postTitle.trim());
+            notification.setContent(mention.getMentionText());
+            notification.setIsRead("N");
+            notificationDao.insertNotification(notification);
+
+            PostMentionNotificationDto payload = new PostMentionNotificationDto();
+            payload.setNotificationId("mention-" + postId + "-" + mention.getUserId() + "-" + mention.getStartIndex());
+            payload.setEventType("MENTION");
+            payload.setPostId(postId);
+            payload.setSenderId(author.getMemberId());
+            payload.setSenderName(resolveMemberDisplayName(author));
+            payload.setSenderProfileImageUrl(author.getProfileImageUrl());
+            payload.setMentionedUserId(mention.getUserId());
+            payload.setMentionText(mention.getMentionText());
+            payload.setTargetType("POST");
+            payload.setTargetId(postId);
+            payload.setTitle(notification.getTitle());
+            payload.setContent(mention.getMentionText());
+            payload.setCreatedAt(LocalDateTime.now(KOREA_ZONE).format(NOTIFICATION_TIME_FORMATTER));
+
+            messagingTemplate.convertAndSend("/sub/notifications/" + mention.getUserId(), payload);
+        }
+    }
+
+    private String getPostTitle(Long postId) {
+        if (postId == null) {
+            return null;
+        }
+
+        PostDetail post = postDao.selectPostById(postId, null);
+        if (post == null) {
+            return null;
+        }
+
+        return post.getTitle();
     }
 
     private Long getViewerId(String authorizationHeader) {
@@ -333,6 +392,9 @@ public class PostService {
 
         comment.setAuthor(loginMember.getNickname());
         comment.setProfileImageUrl(loginMember.getProfileImageUrl());
+        List<PostMention> mentions = normalizeMentions(postId, request.getMentions());
+        comment.setMentions(mentions);
+        sendMentionNotifications(postId, getPostTitle(postId), loginMember, mentions);
         sendCommentNotification(postId, comment, loginMember);
         return comment;
     }

@@ -52,8 +52,8 @@ CREATE TABLE IF NOT EXISTS post_mention_tbl (
 
 CREATE TABLE IF NOT EXISTS notification_tbl (
   notification_id BIGINT NOT NULL AUTO_INCREMENT,
-  receiver_id BIGINT NOT NULL,
-  sender_id BIGINT NULL,
+  recipient_member_id BIGINT NOT NULL,
+  sender_member_id BIGINT NULL,
   notification_type VARCHAR(30) NOT NULL,
   target_type VARCHAR(20) NOT NULL,
   target_id BIGINT NOT NULL,
@@ -62,8 +62,8 @@ CREATE TABLE IF NOT EXISTS notification_tbl (
   is_read CHAR(1) NOT NULL DEFAULT 'N',
   created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (notification_id),
-  KEY idx_notification_receiver (receiver_id),
+  KEY idx_notification_receiver (recipient_member_id),
   KEY idx_notification_target (target_type, target_id),
-  FOREIGN KEY (receiver_id) REFERENCES members(member_id),
-  FOREIGN KEY (sender_id) REFERENCES members(member_id)
+  FOREIGN KEY (recipient_member_id) REFERENCES members(member_id),
+  FOREIGN KEY (sender_member_id) REFERENCES members(member_id)
 );

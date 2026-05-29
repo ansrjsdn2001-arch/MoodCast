@@ -4,8 +4,8 @@
 
     <insert id="insertNotification" parameterType="com.moodcast.notification.vo.Notification" useGeneratedKeys="true" keyProperty="notificationId">
         insert into notification_tbl (
-            receiver_id,
-            sender_id,
+            recipient_member_id,
+            sender_member_id,
             notification_type,
             target_type,
             target_id,

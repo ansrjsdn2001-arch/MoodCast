@@ -191,10 +191,8 @@ public class PostController {
     public ResponseEntity<?> createReply(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
             @PathVariable Long commentId,
-            @RequestBody Map<String, String> body
+            @RequestBody CreateCommentRequest replyRequest
     ) {
-        CreateCommentRequest replyRequest = new CreateCommentRequest();
-        replyRequest.setContent(body.get("content"));
         replyRequest.setParentCommentId(commentId);
 
         // parentComment에서 postId 조회
