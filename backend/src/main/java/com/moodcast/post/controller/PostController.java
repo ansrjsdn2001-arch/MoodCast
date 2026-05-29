@@ -197,7 +197,7 @@ public class PostController {
 
         // parentComment에서 postId 조회
         com.moodcast.post.vo.CommentSummary parent = postService.getCommentById(commentId);
-        CommentSummary reply = postService.addComment(authorizationHeader, parent.getPostId(), replyRequest);
+        CommentSummary reply = postService.addComment(authorizationHeader, parent.getPostId(), body);
         return ResponseEntity.ok(Map.of("success", true, "comment", reply));
     }
 
