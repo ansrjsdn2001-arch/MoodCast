@@ -332,6 +332,17 @@ export function CommentModal({
       await axios.delete(`${BACKSERVER}/posts/comments/${commentId}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
+      const removeReplyFromComments = (comments) =>
+        comments.map((c) => ({
+          ...c,
+          replies: (c.replies ?? [])
+            .filter((r) => r.commentId !== commentId)
+            .map((r) => ({
+              ...r,
+              replies: r.replies ? removeReplyFromComments(r.replies) : [],
+            })),
+        }));
+
       if (parentCommentId) {
         // 대댓글 삭제
         setLocalComments((prev) =>
@@ -357,6 +368,24 @@ export function CommentModal({
       alert("댓글 삭제에 실패했습니다.");
     }
   };
+
+  const appendReplyToComments = (comments, parentCommentId, newReply) =>
+    comments.map((comment) => {
+      if (comment.commentId === parentCommentId) {
+        return {
+          ...comment,
+          replies: [...(comment.replies ?? []), newReply],
+        };
+      }
+      return {
+        ...comment,
+        replies: appendReplyToComments(
+          comment.replies ?? [],
+          parentCommentId,
+          newReply,
+        ),
+      };
+    });
 
   const handleReplySubmit = async (parentCommentId) => {
     if (!replyText.trim()) return;
@@ -679,7 +708,7 @@ export function CommentModal({
         )}
 
         {/* 대댓글 목록 */}
-        {!isReply && expandedReplies[id] && item.replies?.length > 0 && (
+        {expandedReplies[id] && item.replies?.length > 0 && (
           <div className={styles.repliesList}>
             {item.replies.map((reply) => renderCommentItem(reply, id))}
           </div>

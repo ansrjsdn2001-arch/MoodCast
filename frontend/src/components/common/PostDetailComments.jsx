@@ -72,6 +72,11 @@ export function PostDetailComments({
   const submittingRef = useRef(false);
 
   const postId = post?.postId ?? post?.id;
+  const countComments = (comments) =>
+    comments.reduce(
+      (acc, current) => acc + 1 + countComments(current.replies ?? []),
+      0,
+    );
   const totalCount = useMemo(
     () =>
       localComments.reduce(
@@ -389,6 +394,24 @@ export function PostDetailComments({
     }
   };
 
+  const appendReplyToComments = (comments, parentCommentId, newReply) =>
+    comments.map((comment) => {
+      if (comment.commentId === parentCommentId) {
+        return {
+          ...comment,
+          replies: [...(comment.replies ?? []), newReply],
+        };
+      }
+      return {
+        ...comment,
+        replies: appendReplyToComments(
+          comment.replies ?? [],
+          parentCommentId,
+          newReply,
+        ),
+      };
+    });
+
   const handleReplySubmit = async (parentCommentId) => {
     if (!replyText.trim()) return;
 
@@ -590,12 +613,16 @@ export function PostDetailComments({
               <ReplyIcon fontSize="small" />
               답글 쓰기
             </button>
+
             {item.replies?.length > 0 && (
               <button
                 type="button"
                 className={styles.toggleRepliesBtn}
                 onClick={() =>
-                  setExpandedReplies((prev) => ({ ...prev, [id]: !prev[id] }))
+                  setExpandedReplies((prev) => ({
+                    ...prev,
+                    [id]: !prev[id],
+                  }))
                 }
               >
                 {expandedReplies[id]
@@ -606,7 +633,7 @@ export function PostDetailComments({
           </div>
         )}
 
-        {!isReply && replyingToId === id && (
+        {replyingToId === id && (
           <div className={styles.replyComposer}>
             <div className={styles.mentionField}>
               <textarea
@@ -698,7 +725,7 @@ export function PostDetailComments({
           </div>
         )}
 
-        {!isReply && expandedReplies[id] && item.replies?.length > 0 && (
+        {expandedReplies[id] && item.replies?.length > 0 && (
           <div className={styles.repliesList}>
             {item.replies.map((reply) => renderCommentItem(reply, id))}
           </div>

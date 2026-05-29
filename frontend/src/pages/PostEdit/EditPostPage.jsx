@@ -126,6 +126,7 @@ export function EditPostPage() {
   };
 
   // 게시물 정보 불러오기
+  // 수정하려는 게시물 내용을 서버에서 읽어와서 화면에 표시합니다.
   useEffect(() => {
     const fetchPost = async () => {
       try {
@@ -167,6 +168,7 @@ export function EditPostPage() {
     fetchPost();
   }, [postId, token, BACKSERVER, navigate]);
 
+  // 수정 중인 게시물 본문에 이미지를 업로드합니다.
   const handleImageUpload = async (event) => {
     const files = Array.from(event.target.files || []);
     if (!files.length) return;
@@ -254,6 +256,7 @@ export function EditPostPage() {
     updateEditorContent(doc.body.innerHTML);
   };
 
+  // 게시물 수정 완료 버튼을 눌렀을 때 백엔드에 수정 요청을 보냅니다.
   const handleSubmit = async () => {
     const effectiveToken = token || window.sessionStorage.getItem('moodcast-access-token');
     if (!effectiveToken) {
