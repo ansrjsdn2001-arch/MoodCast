@@ -708,11 +708,22 @@ export function PostDetailComments({
                         key={candidate.userId}
                         type="button"
                         className={styles.mentionItem}
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => handleReplyMentionSelect(candidate)}
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          handleReplyMentionSelect(candidate);
+                        }}
                       >
-                        <span className={styles.mentionText}>
-                          {candidate.nickname || `회원 ${candidate.userId}`}
+                        <span className={styles.mentionCandidateAvatar}>
+                          <img
+                            src={candidate.profileImage || defaultAvatarSrc}
+                            alt={candidate.nickname || "회원"}
+                          />
+                        </span>
+                        <span className={styles.mentionCandidateMeta}>
+                          <strong>
+                            {candidate.nickname || `회원 ${candidate.userId}`}
+                          </strong>
+                          <span>{`@${candidate.nickname || ""}`}</span>
                         </span>
                       </button>
                     ))
@@ -835,11 +846,22 @@ export function PostDetailComments({
                       key={candidate.userId}
                       type="button"
                       className={styles.mentionItem}
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => handleCommentMentionSelect(candidate)}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        handleCommentMentionSelect(candidate);
+                      }}
                     >
-                      <span className={styles.mentionText}>
-                        {candidate.nickname || `회원 ${candidate.userId}`}
+                      <span className={styles.mentionCandidateAvatar}>
+                        <img
+                          src={candidate.profileImage || defaultAvatarSrc}
+                          alt={candidate.nickname || "회원"}
+                        />
+                      </span>
+                      <span className={styles.mentionCandidateMeta}>
+                        <strong>
+                          {candidate.nickname || `회원 ${candidate.userId}`}
+                        </strong>
+                        <span>{`@${candidate.nickname || ""}`}</span>
                       </span>
                     </button>
                   ))
