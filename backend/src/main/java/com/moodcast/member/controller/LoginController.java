@@ -119,8 +119,27 @@ public class LoginController {
         return ResponseEntity.ok(loginService.getFollowingList(authHeader, memberId));
     }
 
+    // 로그아웃
     @PostMapping("logout")
-    public ResponseEntity<?> logout() {
+    public ResponseEntity<?> logout(HttpServletRequest request) {
+        String refreshToken = null;
+
+        // 쿠키에서 리프레시 토큰 찾기
+        if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if (jwtService.getRefreshCookieName().equals(cookie.getName())) {
+                    refreshToken = cookie.getValue();
+                    break;
+                }
+            }
+        }
+
+        // 찾으면 로그아웃 서비스 호출
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            // 리프레시 토큰 있으면 삭제시킴
+            loginService.logout(refreshToken);
+        }
+
         ResponseCookie deleteCookie = jwtService.createDeleteRefreshCookie();
 
         return ResponseEntity.ok()
@@ -160,7 +179,12 @@ public class LoginController {
                 result.getAccessToken(),
                 result.getMember()
         );
+        // 새 refreshToken을 쿠키에 다시 저장
+        ResponseCookie refreshCookie = jwtService.createRefreshCookie(result.getRefreshToken());
+
         // 응답
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .body(response);
     }
 }

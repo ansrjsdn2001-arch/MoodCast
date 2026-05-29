@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.DigestException;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class LoginService {
@@ -105,10 +106,12 @@ public class LoginService {
         }
 
         String accessToken = jwtService.createAccessToken(member);
-        String refreshToken = jwtService.createRefreshToken(member);
+        String tokenId = UUID.randomUUID().toString();
+        String refreshToken = jwtService.createRefreshToken(member, tokenId);
 
         refreshTokenRedisService.saveRefreshToken(
                 member.getMemberId(),
+                tokenId,
                 refreshToken,
                 jwtService.getRefreshTokenMaxAgeSeconds()
         );
@@ -312,9 +315,10 @@ public class LoginService {
     public LoginResult refreshAccessToken(String refreshToken) {
         // 토큰 검증 및 memberId 추출
         Long memberId = jwtService.getMemberIdFromRefreshToken(refreshToken);
+        String tokenId = jwtService.getTokenIdFromRefreshToken(refreshToken);
 
         // redis의 최신 refreshToken과 일치하는지 체크
-        if (!refreshTokenRedisService.matches(memberId, refreshToken)) {
+        if (!refreshTokenRedisService.matches(memberId, tokenId, refreshToken)) {
             throw new IllegalArgumentException("로그인이 필요합니다.");
         }
 
@@ -327,16 +331,37 @@ public class LoginService {
         // 로그인 가능여부 서비스 정책 체크
         checkLoginAllowed(member);
 
-        // 검증 끝 새 accessToken 발급
+        // 기존 refreshToken은 재사용하지 못하게 삭제
+        refreshTokenRedisService.deleteRefreshToken(memberId, tokenId);
+
+        // 새 로그인 세션 tokenId 생성
+        String newTokenId = UUID.randomUUID().toString();
+
+        // accessToken과 refreshToken 새로 발급
         String newAccessToken = jwtService.createAccessToken(member);
-        // dto에 담기
+        String newRefreshToken = jwtService.createRefreshToken(member, newTokenId);
+
+        // 새 refreshToken을 Redis에 저장
+        refreshTokenRedisService.saveRefreshToken(
+                member.getMemberId(),
+                newTokenId,
+                newRefreshToken,
+                jwtService.getRefreshTokenMaxAgeSeconds()
+        );
+
         LoginMemberResponse loginMemberResponse = toLoginMemberResponse(member);
 
-        // 새 accessToken, 기존 refreshToken, 회원묶음 반환
         return new LoginResult(
                 newAccessToken,
-                refreshToken,
+                newRefreshToken,
                 loginMemberResponse
         );
+    }
+
+    // 로그아웃 시 refreshToken 있으면 redis에서 삭제
+    public void logout(String refreshToken) {
+        Long memberId = jwtService.getMemberIdFromRefreshToken(refreshToken);
+        String tokenId = jwtService.getTokenIdFromRefreshToken(refreshToken);
+        refreshTokenRedisService.deleteRefreshToken(memberId, tokenId);
     }
 }
