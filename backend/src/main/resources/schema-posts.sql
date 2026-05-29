@@ -35,6 +35,21 @@ CREATE TABLE IF NOT EXISTS saved_post (
   FOREIGN KEY (member_id) REFERENCES members(member_id)
 );
 
+CREATE TABLE IF NOT EXISTS comment_mention_tbl (
+  comment_mention_id BIGINT NOT NULL AUTO_INCREMENT,
+  comment_id BIGINT NOT NULL,
+  mentioned_user_id BIGINT NOT NULL,
+  mention_text VARCHAR(50) NOT NULL,
+  start_index INT NOT NULL,
+  end_index INT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (comment_mention_id),
+  KEY idx_comment_mention_comment_id (comment_id),
+  KEY idx_comment_mention_user_id (mentioned_user_id),
+  FOREIGN KEY (comment_id) REFERENCES comment_tbl(comment_id),
+  FOREIGN KEY (mentioned_user_id) REFERENCES members(member_id)
+);
+
 CREATE TABLE IF NOT EXISTS post_mention_tbl (
   post_mention_id BIGINT NOT NULL AUTO_INCREMENT,
   post_id BIGINT NOT NULL,

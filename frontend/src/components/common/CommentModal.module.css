@@ -410,6 +410,10 @@
 .mentionText {
   color: #5b47e8;
   font-weight: 700;
+  cursor: pointer;
+  background: rgba(124, 77, 255, 0.09);
+  border-radius: 8px;
+  padding: 0 4px;
 }
 
 .mentionCandidateAvatar {

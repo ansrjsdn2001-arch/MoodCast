@@ -4,6 +4,7 @@
 
     <resultMap id="postMentionMap" type="com.moodcast.post.vo.PostMention">
         <id property="postMentionId" column="postMentionId"/>
+        <result property="commentId" column="commentId"/>
         <result property="postId" column="postId"/>
         <result property="userId" column="userId"/>
         <result property="nickname" column="nickname"/>
@@ -11,6 +12,18 @@
         <result property="startIndex" column="startIndex"/>
         <result property="endIndex" column="endIndex"/>
         <result property="createdAt" column="createdAt"/>
+    </resultMap>
+
+    <resultMap id="commentSummaryMap" type="com.moodcast.post.vo.CommentSummary">
+        <id property="commentId" column="commentId"/>
+        <result property="postId" column="postId"/>
+        <result property="memberId" column="memberId"/>
+        <result property="author" column="author"/>
+        <result property="content" column="content"/>
+        <result property="createdAt" column="createdAt"/>
+        <result property="profileImageUrl" column="profileImageUrl"/>
+        <result property="parentCommentId" column="parentCommentId"/>
+        <collection property="mentions" ofType="com.moodcast.post.vo.PostMention" column="commentId" select="selectCommentMentionsByCommentId"/>
     </resultMap>
 
     <resultMap id="postSummaryMap" type="com.moodcast.post.vo.PostSummary">
@@ -263,7 +276,7 @@
         order by pm.start_index asc, pm.post_mention_id asc
     </select>
 
-    <select id="selectCommentsByPostId" parameterType="long" resultType="com.moodcast.post.vo.CommentSummary">
+    <select id="selectCommentsByPostId" parameterType="long" resultMap="commentSummaryMap">
         select
             c.comment_id as commentId,
             c.post_id as postId,
@@ -281,7 +294,7 @@
         order by c.created_at asc
     </select>
 
-    <select id="selectRepliesByPostId" parameterType="long" resultType="com.moodcast.post.vo.CommentSummary">
+    <select id="selectRepliesByPostId" parameterType="long" resultMap="commentSummaryMap">
         select
             c.comment_id as commentId,
             c.post_id as postId,
@@ -334,7 +347,47 @@
         )
     </insert>
 
-    <select id="selectCommentById" parameterType="long" resultType="com.moodcast.post.vo.CommentSummary">
+    <insert id="insertCommentMention" parameterType="com.moodcast.post.vo.PostMention" useGeneratedKeys="true" keyProperty="postMentionId">
+        insert into comment_mention_tbl (
+            comment_id,
+            mentioned_user_id,
+            mention_text,
+            start_index,
+            end_index,
+            created_at
+        ) values (
+            #{commentId},
+            #{userId},
+            #{mentionText},
+            #{startIndex},
+            #{endIndex},
+            CONVERT_TZ(NOW(6), '+00:00', '+09:00')
+        )
+    </insert>
+
+    <delete id="deleteCommentMentionsByCommentId" parameterType="long">
+        delete from comment_mention_tbl
+        where comment_id = #{commentId}
+    </delete>
+
+    <select id="selectCommentMentionsByCommentId" parameterType="long" resultMap="postMentionMap">
+        select
+            cm.comment_mention_id as postMentionId,
+            cm.comment_id as commentId,
+            null as postId,
+            cm.mentioned_user_id as userId,
+            coalesce(m.nickname, m.name) as nickname,
+            cm.mention_text as mentionText,
+            cm.start_index as startIndex,
+            cm.end_index as endIndex,
+            date_format(cm.created_at, '%Y-%m-%d %H:%i:%s') as createdAt
+        from comment_mention_tbl cm
+                 join members m on cm.mentioned_user_id = m.member_id
+        where cm.comment_id = #{commentId}
+        order by cm.start_index asc, cm.comment_mention_id asc
+    </select>
+
+    <select id="selectCommentById" parameterType="long" resultMap="commentSummaryMap">
         select
             c.comment_id as commentId,
             c.post_id as postId,

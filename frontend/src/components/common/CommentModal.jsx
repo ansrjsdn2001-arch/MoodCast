@@ -593,7 +593,7 @@ export function CommentModal({
               onMentionClick={(mention) => {
                 const userId = mention?.userId ?? mention?.mentionedUserId;
                 if (userId) {
-                  navigate(`/profile/${userId}`);
+                  navigate(`/app/user/${userId}`);
                 }
               }}
               className={styles.commentTextContent}

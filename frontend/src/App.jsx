@@ -83,6 +83,8 @@ function AppRoutes() {
       {/* 마이페이지와 유저페이지를 ProfilePage 하나로 통합함 */}
       <Route path="/app/profile" element={authRoute(<ProfilePage />)} />
       <Route path="/app/profile-mobile" element={authRoute(<ProfilePage />)} />
+      <Route path="/profile/:handle" element={authRoute(<ProfilePage />)} />
+      <Route path="/profile" element={authRoute(<ProfilePage />)} />
       <Route
         path="/app/profile/edit"
         element={authRoute(<ProfileEditPage />)}

@@ -26,6 +26,10 @@ public interface PostDao {
 
     int deletePostMentionsByPostId(@Param("postId") Long postId);
 
+    int insertCommentMention(PostMention mention);
+
+    int deleteCommentMentionsByCommentId(@Param("commentId") Long commentId);
+
     PostDetail selectPostById(@Param("postId") Long postId, @Param("viewerId") Long viewerId);
 
     int updatePost(Post post);
@@ -41,6 +45,8 @@ public interface PostDao {
     List<PostSummary> selectPostsByMember(@Param("memberId") Long memberId, @Param("viewerId") Long viewerId);
 
     List<PostMention> selectMentionsByPostId(@Param("postId") Long postId);
+
+    List<PostMention> selectCommentMentionsByCommentId(@Param("commentId") Long commentId);
 
     List<CommentSummary> selectCommentsByPostId(@Param("postId") Long postId);
 

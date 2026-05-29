@@ -220,7 +220,7 @@ export function FeedCard({ post, compact = false, initialCommentOpen = false, on
       return;
     }
 
-    navigate(`/profile/${userId}`);
+    navigate(`/app/user/${userId}`);
   };
 
   useEffect(() => {

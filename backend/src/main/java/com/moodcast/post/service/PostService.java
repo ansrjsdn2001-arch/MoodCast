@@ -168,6 +168,22 @@ public class PostService {
         }
     }
 
+    private void persistCommentMentions(Long commentId, List<PostMention> mentions) {
+        if (commentId == null) {
+            return;
+        }
+
+        postDao.deleteCommentMentionsByCommentId(commentId);
+        if (mentions == null || mentions.isEmpty()) {
+            return;
+        }
+
+        for (PostMention mention : mentions) {
+            mention.setCommentId(commentId);
+            postDao.insertCommentMention(mention);
+        }
+    }
+
     private void sendMentionNotifications(Long postId, Post post, LoginMemberResponse author, List<PostMention> mentions) {
         if (postId == null || post == null || author == null || mentions == null || mentions.isEmpty()) {
             return;
@@ -394,6 +410,7 @@ public class PostService {
         comment.setProfileImageUrl(loginMember.getProfileImageUrl());
         List<PostMention> mentions = normalizeMentions(postId, request.getMentions());
         comment.setMentions(mentions);
+        persistCommentMentions(comment.getCommentId(), mentions);
         sendMentionNotifications(postId, getPostTitle(postId), loginMember, mentions);
         sendCommentNotification(postId, comment, loginMember);
         return comment;
@@ -620,6 +637,7 @@ public class PostService {
         for (Long childId : childIds) {
             cascadeDeleteComment(childId);
         }
+        postDao.deleteCommentMentionsByCommentId(commentId);
         postDao.deleteComment(commentId);
     }
 }

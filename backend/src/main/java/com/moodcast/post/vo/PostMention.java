@@ -5,6 +5,7 @@ import lombok.Data;
 @Data
 public class PostMention {
     private Long postMentionId;
+    private Long commentId;
     private Long postId;
     private Long userId;
     private String nickname;
