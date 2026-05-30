@@ -5,9 +5,12 @@ import com.moodcast.member.dto.login.LoginResponse;
 import com.moodcast.member.dto.login.LoginResult;
 import com.moodcast.member.dto.login.LoginMemberResponse;
 import com.moodcast.member.dto.login.UpdateProfileRequest;
+import com.moodcast.member.dto.password.PasswordChangeRequest;
+import com.moodcast.member.dto.withdraw.WithdrawRequest;
 import com.moodcast.member.dto.follow.FollowResponse;
 import com.moodcast.member.dto.follow.FollowCheckResponse;
 import com.moodcast.member.dto.follow.FollowItemResponse;
+import com.moodcast.member.service.LoginAuditService;
 import com.moodcast.member.service.LoginService;
 import com.moodcast.member.service.JwtService;
 import jakarta.servlet.http.Cookie;
@@ -30,22 +33,109 @@ public class LoginController {
     @Autowired
     private JwtService jwtService;
 
+    @Autowired
+    private LoginAuditService loginAuditService;
+
+    private String getClientIp(HttpServletRequest request) {
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+
+        if (forwardedFor != null && !forwardedFor.isBlank()) {
+            return forwardedFor.split(",")[0].trim();
+        }
+
+        return request.getRemoteAddr();
+    }
+
+    private String getUserAgent(HttpServletRequest request) {
+        return request.getHeader("User-Agent");
+    }
+
+    private String getAuditEmail(LoginRequest request) {
+        if (request == null || request.getEmail() == null) {
+            return null;
+        }
+
+        return request.getEmail().trim().toLowerCase();
+    }
+
+    private String getLoginFailReason(Exception e) {
+        String message = e.getMessage();
+
+        if (message == null) {
+            return "UNKNOWN";
+        }
+
+        if (message.contains("실패 횟수")) {
+            return "ACCOUNT_LOCKED";
+        }
+
+        if (message.contains("정지")) {
+            return "SUSPENDED";
+        }
+
+        if (message.contains("탈퇴")) {
+            return "WITHDRAW";
+        }
+
+        if (message.contains("이메일 인증")) {
+            return "EMAIL_NOT_VERIFIED";
+        }
+
+        if (message.contains("휴대폰 인증")) {
+            return "PHONE_NOT_VERIFIED";
+        }
+
+        if (message.contains("비밀번호")) {
+            return "PASSWORD_MISMATCH";
+        }
+
+        return "UNKNOWN";
+    }
+
     @PostMapping("login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
-        LoginResult result = loginService.login(request);
+    public ResponseEntity<?> login(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+        try {
+            LoginResult result = loginService.login(request);
 
-        ResponseCookie refreshCookie = jwtService.createRefreshCookie(result.getRefreshToken());
+            loginAuditService.record(
+                    result.getMember().getMemberId(),
+                    result.getMember().getEmail(),
+                    null,
+                    "PASSWORD_LOGIN_SUCCESS",
+                    true,
+                    null,
+                    getClientIp(httpRequest),
+                    getUserAgent(httpRequest)
+            );
 
-        LoginResponse response = new LoginResponse(
-                true,
-                "로그인 성공",
-                result.getAccessToken(),
-                result.getMember()
-        );
+            ResponseCookie refreshCookie = jwtService.createRefreshCookie(result.getRefreshToken());
 
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                .body(response);
+            LoginResponse response = new LoginResponse(
+                    true,
+                    "로그인 성공",
+                    result.getAccessToken(),
+                    result.getMember()
+            );
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                    .body(response);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            String failReason = getLoginFailReason(e);
+
+            loginAuditService.record(
+                    null,
+                    getAuditEmail(request),
+                    null,
+                    "ACCOUNT_LOCKED".equals(failReason) ? "ACCOUNT_LOCKED" : "PASSWORD_LOGIN_FAIL",
+                    false,
+                    failReason,
+                    getClientIp(httpRequest),
+                    getUserAgent(httpRequest)
+            );
+
+            throw e;
+        }
     }
 
     @GetMapping("me")
@@ -73,6 +163,68 @@ public class LoginController {
                         "member", loginService.updateProfile(authorizationHeader, request)
                 )
         );
+    }
+
+    @PostMapping("password/change")
+    public ResponseEntity<?> changePassword(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestBody PasswordChangeRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        loginService.changePassword(authorizationHeader, request);
+
+        loginAuditService.record(
+                null,
+                null,
+                null,
+                "PASSWORD_CHANGE",
+                true,
+                null,
+                getClientIp(httpRequest),
+                getUserAgent(httpRequest)
+        );
+
+        ResponseCookie deleteCookie = jwtService.createDeleteRefreshCookie();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
+                .body(
+                        Map.of(
+                                "success", true,
+                                "message", "비밀번호가 변경되었습니다. 다시 로그인해주세요."
+                        )
+                );
+    }
+
+    @PostMapping("withdraw")
+    public ResponseEntity<?> withdraw(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestBody WithdrawRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        loginService.withdraw(authorizationHeader, request);
+
+        loginAuditService.record(
+                null,
+                null,
+                null,
+                "WITHDRAW",
+                true,
+                null,
+                getClientIp(httpRequest),
+                getUserAgent(httpRequest)
+        );
+
+        ResponseCookie deleteCookie = jwtService.createDeleteRefreshCookie();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
+                .body(
+                        Map.of(
+                                "success", true,
+                                "message", "회원 탈퇴가 완료되었습니다."
+                        )
+                );
     }
 
     @GetMapping("member/{memberId}")
@@ -134,10 +286,32 @@ public class LoginController {
             }
         }
 
-        // 찾으면 로그아웃 서비스 호출
         if (refreshToken != null && !refreshToken.isBlank()) {
-            // 리프레시 토큰 있으면 삭제시킴
-            loginService.logout(refreshToken);
+            try {
+                loginService.logout(refreshToken);
+                loginAuditService.record(
+                        null,
+                        null,
+                        null,
+                        "LOGOUT",
+                        true,
+                        null,
+                        getClientIp(request),
+                        getUserAgent(request)
+                );
+            } catch (IllegalArgumentException e) {
+                // refresh token이 이미 만료/삭제되어도 로그아웃은 쿠키 정리까지 성공 처리함
+                loginAuditService.record(
+                        null,
+                        null,
+                        null,
+                        "LOGOUT",
+                        false,
+                        "REFRESH_EXPIRED",
+                        getClientIp(request),
+                        getUserAgent(request)
+                );
+            }
         }
 
         ResponseCookie deleteCookie = jwtService.createDeleteRefreshCookie();
@@ -169,8 +343,34 @@ public class LoginController {
             }
         }
 
-        // 리프레시 토큰 찾았으니까 엑세스 토큰 재발급 요청
-        LoginResult result = loginService.refreshAccessToken(refreshToken);
+        LoginResult result;
+
+        try {
+            result = loginService.refreshAccessToken(refreshToken);
+            loginAuditService.record(
+                    result.getMember().getMemberId(),
+                    result.getMember().getEmail(),
+                    null,
+                    "REFRESH_SUCCESS",
+                    true,
+                    null,
+                    getClientIp(request),
+                    getUserAgent(request)
+            );
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            loginAuditService.record(
+                    null,
+                    null,
+                    null,
+                    "REFRESH_FAIL",
+                    false,
+                    "REFRESH_EXPIRED",
+                    getClientIp(request),
+                    getUserAgent(request)
+            );
+
+            throw e;
+        }
 
         // dto에 담아서
         LoginResponse response = new LoginResponse(

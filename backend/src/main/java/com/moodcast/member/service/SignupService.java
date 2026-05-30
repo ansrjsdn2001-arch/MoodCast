@@ -233,11 +233,18 @@ public class SignupService {
     // 이메일 인증코드
     @Transactional
     public String sendEmailAuthCode(String email) {
+        return sendEmailAuthCode(email, "UNKNOWN");
+    }
+
+    // 이메일 인증코드
+    @Transactional
+    public String sendEmailAuthCode(String email, String clientIp) {
         email = normalizeEmail(email);
 
         checkEmailDuplicate(email);
 
         authCodeRedisService.checkCooldown("SIGNUP", "EMAIL", email);
+        authCodeRedisService.checkAndIncreaseIpSendCount("SIGNUP", "EMAIL", clientIp);
         authCodeRedisService.checkAndIncreaseSendCount("SIGNUP", "EMAIL", email);
 
         String authCode = createAuthCode();
@@ -262,10 +269,17 @@ public class SignupService {
     // 휴대폰 인증코드
     @Transactional
     public String sendPhoneAuthCode(String phone) {
+        return sendPhoneAuthCode(phone, "UNKNOWN");
+    }
+
+    // 휴대폰 인증코드
+    @Transactional
+    public String sendPhoneAuthCode(String phone, String clientIp) {
         phone = normalizePhone(phone);
         checkPhoneDuplicate(phone);
 
         authCodeRedisService.checkCooldown("SIGNUP", "PHONE", phone);
+        authCodeRedisService.checkAndIncreaseIpSendCount("SIGNUP", "PHONE", clientIp);
         authCodeRedisService.checkAndIncreaseSendCount("SIGNUP", "PHONE", phone);
 
         String authCode = createAuthCode();

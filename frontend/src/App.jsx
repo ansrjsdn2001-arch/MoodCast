@@ -26,6 +26,82 @@ function AppRoutes() {
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
 
   useEffect(() => {
+    let refreshPromise = null;
+
+    // 모든 axios 요청에 현재 accessToken을 자동으로 붙임
+    const requestInterceptor = axios.interceptors.request.use((config) => {
+      const token = useAuthStore.getState().accessToken;
+
+      if (token && !config.headers?.Authorization) {
+        config.headers = {
+          ...config.headers,
+          Authorization: "Bearer " + token,
+        };
+      }
+
+      return config;
+    });
+
+    // accessToken 만료 시 refresh를 한 번만 시도하고 원래 요청을 다시 보냄
+    const responseInterceptor = axios.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+        const status = error.response?.status;
+        const requestUrl = originalRequest?.url || "";
+        const isRefreshRequest = requestUrl.includes("/auth/refresh");
+
+        if (
+          (status === 401 || status === 403) &&
+          originalRequest &&
+          !originalRequest._retry &&
+          !isRefreshRequest
+        ) {
+          originalRequest._retry = true;
+
+          if (!refreshPromise) {
+            refreshPromise = axios
+              .post(
+                `${BACKSERVER}/auth/refresh`,
+                {},
+                {
+                  withCredentials: true,
+                },
+              )
+              .then((res) => {
+                setAuthData(res.data.accessToken, res.data.member);
+                return res.data.accessToken;
+              })
+              .catch((refreshError) => {
+                clearAuthData();
+                throw refreshError;
+              })
+              .finally(() => {
+                refreshPromise = null;
+              });
+          }
+
+          const newAccessToken = await refreshPromise;
+
+          originalRequest.headers = {
+            ...originalRequest.headers,
+            Authorization: "Bearer " + newAccessToken,
+          };
+
+          return axios(originalRequest);
+        }
+
+        return Promise.reject(error);
+      },
+    );
+
+    return () => {
+      axios.interceptors.request.eject(requestInterceptor);
+      axios.interceptors.response.eject(responseInterceptor);
+    };
+  }, [BACKSERVER, setAuthData, clearAuthData]);
+
+  useEffect(() => {
     const checkLogin = async () => {
       try {
         if (accessToken) {

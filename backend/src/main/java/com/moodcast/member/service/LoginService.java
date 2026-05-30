@@ -1,13 +1,17 @@
 package com.moodcast.member.service;
 
 import com.moodcast.member.dao.LoginDao;
+import com.moodcast.member.dao.PasswordHistoryDao;
 import com.moodcast.member.dto.follow.FollowCheckResponse;
 import com.moodcast.member.dto.follow.FollowItemResponse;
 import com.moodcast.member.dto.follow.FollowResponse;
 import com.moodcast.member.dto.login.LoginMemberResponse;
 import com.moodcast.member.dto.login.LoginRequest;
 import com.moodcast.member.dto.login.LoginResult;
+import com.moodcast.member.dto.login.RefreshTokenInfo;
 import com.moodcast.member.dto.login.UpdateProfileRequest;
+import com.moodcast.member.dto.password.PasswordChangeRequest;
+import com.moodcast.member.dto.withdraw.WithdrawRequest;
 import com.moodcast.member.vo.Member;
 import io.jsonwebtoken.JwtException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,17 +22,27 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.DigestException;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Service
 public class LoginService {
+    private static final Pattern PASSWORD_PATTERN =
+            Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[?!@#$%^&*])[A-Za-z\\d?!@#$%^&*]{8,20}$");
+
     @Autowired
     private LoginDao loginDao;
+
+    @Autowired
+    private PasswordHistoryDao passwordHistoryDao;
 
     @Autowired
     private MemberValidationService memberValidationService;
 
     @Autowired
     private RefreshTokenRedisService refreshTokenRedisService;
+
+    @Autowired
+    private LoginAttemptRedisService loginAttemptRedisService;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -43,6 +57,25 @@ public class LoginService {
         }
 
         return password;
+    }
+
+    // 새 비밀번호 정책과 확인값 일치를 검증함
+    private void checkNewPassword(String newPassword, String newPasswordConfirm) {
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            throw new IllegalArgumentException("새 비밀번호를 입력해주세요.");
+        }
+
+        if (!PASSWORD_PATTERN.matcher(newPassword).matches()) {
+            throw new IllegalArgumentException("비밀번호는 영문, 숫자, 특수문자를 포함한 8~20자입니다.");
+        }
+
+        if (newPasswordConfirm == null || newPasswordConfirm.trim().isEmpty()) {
+            throw new IllegalArgumentException("새 비밀번호 확인을 입력해주세요.");
+        }
+
+        if (!newPassword.equals(newPasswordConfirm)) {
+            throw new IllegalArgumentException("새 비밀번호가 일치하지 않습니다.");
+        }
     }
 
     // 회원이 로그인 가능한 상태인지 체크
@@ -77,6 +110,13 @@ public class LoginService {
         );
     }
 
+    // 이메일/비밀번호 실패 메시지를 통일하고 Redis 실패 횟수를 기록함
+    private void failLogin(String email) {
+        loginAttemptRedisService.recordFailure(email);
+
+        throw new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
+    }
+
     @Transactional
     public LoginResult login(LoginRequest request) {
         if (request == null) {
@@ -86,23 +126,37 @@ public class LoginService {
         String email = memberValidationService.normalizeEmail(request.getEmail());
         String password = checkPasswordInput(request.getPassword());
 
+        loginAttemptRedisService.checkLocked(email);
+
         Member member = loginDao.findMemberByEmail(email);
         String passwordHash = loginDao.findPasswordHashByEmail(email);
 
         if (member == null || passwordHash == null || passwordHash.trim().isEmpty()) {
-            throw new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
+            failLogin(email);
         }
 
         boolean matches = passwordEncoder.matches(password, passwordHash);
         if (!matches) {
-            throw new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
+            failLogin(email);
         }
+
+        loginAttemptRedisService.clear(email);
 
         checkLoginAllowed(member);
 
         int result = loginDao.updateLastLoginAt(member.getMemberId());
         if (result <= 0) {
             throw new IllegalStateException("로그인 처리에 실패했습니다.");
+        }
+
+        return issueLoginTokens(member);
+    }
+
+
+    // 일반 로그인과 소셜 로그인이 같은 방식으로 access/refresh 토큰을 발급받게 함
+    public LoginResult issueLoginTokens(Member member) {
+        if (member == null || member.getMemberId() == null) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
         }
 
         String accessToken = jwtService.createAccessToken(member);
@@ -118,15 +172,12 @@ public class LoginService {
 
         LoginMemberResponse loginMemberResponse = toLoginMemberResponse(member);
 
-        LoginResult loginResult = new LoginResult(
+        return new LoginResult(
                 accessToken,
                 refreshToken,
                 loginMemberResponse
         );
-
-        return loginResult;
     }
-
 
 
     public LoginMemberResponse getLoginMember(String accessToken) {
@@ -152,6 +203,95 @@ public class LoginService {
         String accessToken = extractAccessToken(authorizationHeader);
 
         return getLoginMember(accessToken);
+    }
+
+    // 비밀번호 변경 후 모든 refresh 세션을 삭제해서 재로그인을 강제함
+    @Transactional
+    public void changePassword(String authorizationHeader, PasswordChangeRequest request) {
+        Long memberId = getMemberIdFromHeader(authorizationHeader);
+        Member member = loginDao.findMemberById(memberId);
+
+        if (member == null) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        checkLoginAllowed(member);
+
+        if (request == null) {
+            throw new IllegalArgumentException("비밀번호 변경 정보를 입력해주세요.");
+        }
+
+        String currentPassword = checkPasswordInput(request.getCurrentPassword());
+        checkNewPassword(request.getNewPassword(), request.getNewPasswordConfirm());
+
+        String currentPasswordHash = loginDao.findPasswordHashByMemberId(memberId);
+
+        if (currentPasswordHash == null || currentPasswordHash.trim().isEmpty()) {
+            throw new IllegalArgumentException("소셜 로그인 계정은 비밀번호 변경을 사용할 수 없습니다.");
+        }
+
+        if (!passwordEncoder.matches(currentPassword, currentPasswordHash)) {
+            throw new IllegalArgumentException("현재 비밀번호가 올바르지 않습니다.");
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), currentPasswordHash)) {
+            throw new IllegalArgumentException("현재 비밀번호와 다른 비밀번호를 사용해주세요.");
+        }
+
+        List<String> recentPasswordHashes = passwordHistoryDao.findRecentPasswordHashes(memberId, 3);
+        for (String recentPasswordHash : recentPasswordHashes) {
+            if (passwordEncoder.matches(request.getNewPassword(), recentPasswordHash)) {
+                throw new IllegalArgumentException("최근 사용한 비밀번호는 다시 사용할 수 없습니다.");
+            }
+        }
+
+        String newPasswordHash = passwordEncoder.encode(request.getNewPassword());
+
+        int updateResult = loginDao.updatePasswordHash(memberId, newPasswordHash);
+        if (updateResult != 1) {
+            throw new IllegalStateException("비밀번호 변경에 실패했습니다.");
+        }
+
+        passwordHistoryDao.insertPasswordHistory(memberId, currentPasswordHash);
+        refreshTokenRedisService.deleteAllRefreshTokens(memberId);
+    }
+
+    // 회원 row는 삭제하지 않고 WITHDRAW 상태와 deleted_at으로 탈퇴 처리함
+    @Transactional
+    public void withdraw(String authorizationHeader, WithdrawRequest request) {
+        Long memberId = getMemberIdFromHeader(authorizationHeader);
+        Member member = loginDao.findMemberById(memberId);
+
+        if (member == null) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        checkLoginAllowed(member);
+
+        if (request == null) {
+            throw new IllegalArgumentException("회원 탈퇴 정보를 입력해주세요.");
+        }
+
+        String passwordHash = loginDao.findPasswordHashByMemberId(memberId);
+
+        if (passwordHash == null || passwordHash.trim().isEmpty()) {
+            if (!"탈퇴합니다".equals(request.getConfirmText())) {
+                throw new IllegalArgumentException("탈퇴 확인 문구를 입력해주세요.");
+            }
+        } else {
+            String password = checkPasswordInput(request.getPassword());
+
+            if (!passwordEncoder.matches(password, passwordHash)) {
+                throw new IllegalArgumentException("비밀번호가 올바르지 않습니다.");
+            }
+        }
+
+        int result = loginDao.withdrawMember(memberId);
+        if (result != 1) {
+            throw new IllegalStateException("회원 탈퇴 처리에 실패했습니다.");
+        }
+
+        refreshTokenRedisService.deleteAllRefreshTokens(memberId);
     }
 
     public LoginMemberResponse getMemberById(Long memberId) {
@@ -314,11 +454,12 @@ public class LoginService {
     // accessToken 재발급
     public LoginResult refreshAccessToken(String refreshToken) {
         // 토큰 검증 및 memberId 추출
-        Long memberId = jwtService.getMemberIdFromRefreshToken(refreshToken);
-        String tokenId = jwtService.getTokenIdFromRefreshToken(refreshToken);
+        RefreshTokenInfo refreshTokenInfo = jwtService.getRefreshTokenInfo(refreshToken);
+        Long memberId = refreshTokenInfo.getMemberId();
+        String tokenId = refreshTokenInfo.getTokenId();
 
         // redis의 최신 refreshToken과 일치하는지 체크
-        if (!refreshTokenRedisService.matches(memberId, tokenId, refreshToken)) {
+        if (!refreshTokenRedisService.matchesRefreshToken(memberId, tokenId, refreshToken)) {
             throw new IllegalArgumentException("로그인이 필요합니다.");
         }
 
@@ -360,8 +501,7 @@ public class LoginService {
 
     // 로그아웃 시 refreshToken 있으면 redis에서 삭제
     public void logout(String refreshToken) {
-        Long memberId = jwtService.getMemberIdFromRefreshToken(refreshToken);
-        String tokenId = jwtService.getTokenIdFromRefreshToken(refreshToken);
-        refreshTokenRedisService.deleteRefreshToken(memberId, tokenId);
+        RefreshTokenInfo refreshTokenInfo = jwtService.getRefreshTokenInfo(refreshToken);
+        refreshTokenRedisService.deleteRefreshToken(refreshTokenInfo.getMemberId(), refreshTokenInfo.getTokenId());
     }
 }

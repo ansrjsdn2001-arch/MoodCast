@@ -18,6 +18,8 @@ public class AuthCodeRedisService {
     private static final Duration SEND_COUNT_TTL = Duration.ofDays(1);
     // 일일 최대 횟수
     private static final int DAILY_SEND_LIMIT = 10;
+    // 같은 IP에서 하루에 허용할 인증번호 발송 횟수
+    private static final int IP_DAILY_SEND_LIMIT = 30;
 
     private final StringRedisTemplate redisTemplate;
 
@@ -28,6 +30,10 @@ public class AuthCodeRedisService {
     // redis key로 사용할 문자열 세팅
     private String key(String type, String purpose, String targetType, String targetValue) {
         return "auth:" + type + ":" + purpose + ":" + targetType + ":" + targetValue;
+    }
+
+    private String ipSendKey(String purpose, String targetType, String ipAddress) {
+        return "auth:send:ip:" + purpose + ":" + targetType + ":" + ipAddress;
     }
 
     // 재요청 쿨타임 체크
@@ -53,6 +59,20 @@ public class AuthCodeRedisService {
 
         // 일일 요청횟수 초과
         if (count != null && count > DAILY_SEND_LIMIT) {
+            throw new IllegalArgumentException("일일 인증번호 발송 횟수를 초과했습니다.");
+        }
+    }
+
+    // 같은 IP에서 인증번호 발송을 과하게 반복하는 것을 막음
+    public void checkAndIncreaseIpSendCount(String purpose, String targetType, String ipAddress) {
+        String sendCountKey = ipSendKey(purpose, targetType, ipAddress);
+        Long count = redisTemplate.opsForValue().increment(sendCountKey);
+
+        if (count != null && count == 1) {
+            redisTemplate.expire(sendCountKey, SEND_COUNT_TTL);
+        }
+
+        if (count != null && count > IP_DAILY_SEND_LIMIT) {
             throw new IllegalArgumentException("일일 인증번호 발송 횟수를 초과했습니다.");
         }
     }
