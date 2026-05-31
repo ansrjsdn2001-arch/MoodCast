@@ -1,6 +1,3 @@
-import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined';
-import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
-import MoodOutlinedIcon from '@mui/icons-material/MoodOutlined';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { defaultAvatarSrc } from '../../shared/lib/defaultAvatar';
@@ -20,8 +17,8 @@ export function ComposerCard() {
   const avatarUrl = resolveUserAvatarUrl(member);
 
   return (
-    <article className={styles.card} onClick={() => navigate('/app/write')} role="presentation">
-      <button type="button" className={styles.avatar} aria-label="작성">
+    <button type="button" className={styles.card} onClick={() => navigate('/app/write')}>
+      <span className={styles.avatar} aria-hidden="true">
         {avatarUrl ? (
           <img
             src={avatarUrl}
@@ -34,21 +31,10 @@ export function ComposerCard() {
         ) : (
           <span />
         )}
-      </button>
-      <button type="button" className={styles.input} onClick={() => navigate('/app/write')}>
+      </span>
+      <span className={styles.input}>
         무슨 생각을 하고 계신가요?
-      </button>
-      <div className={styles.actions}>
-        <button type="button" className={`${styles.action} ${styles.video}`} onClick={() => navigate('/app/write')} aria-label="영상">
-          <VideocamOutlinedIcon />
-        </button>
-        <button type="button" className={`${styles.action} ${styles.image}`} onClick={() => navigate('/app/write')} aria-label="이미지">
-          <ImageOutlinedIcon />
-        </button>
-        <button type="button" className={`${styles.action} ${styles.mood}`} onClick={() => navigate('/app/write')} aria-label="감정">
-          <MoodOutlinedIcon />
-        </button>
-      </div>
-    </article>
+      </span>
+    </button>
   );
 }

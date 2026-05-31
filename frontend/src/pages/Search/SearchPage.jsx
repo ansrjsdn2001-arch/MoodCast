@@ -6,6 +6,7 @@ import { MobileShell } from '../../components/layout/MobileShell';
 import { useIsDesktop } from '../../hooks/useViewportWidth';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { FeedCard } from '../../components/common/FeedCard';
+import { normalizePostDataArray } from '../../shared/lib/postHelpers';
 import styles from './SearchPage.module.css';
 
 // SearchPage는 검색 페이지 화면 전체를 담당합니다.
@@ -69,7 +70,7 @@ export function SearchPage() {
         ...config,
       })
       .then((response) => {
-        setResults(response.data?.results || []);
+        setResults(normalizePostDataArray(response.data?.results || []));
       })
       .catch(() => {
         setError('검색 중 오류가 발생했습니다. 다시 시도해주세요.');
@@ -166,6 +167,7 @@ export function SearchPage() {
       item?.pictureUrl || item?.picture || item?.image_url || item?.photo_url || null;
   };
 
+  // 검색 결과에서 받은 게시물 데이터를 FeedCard 컴포넌트가 사용할 수 있는 형태로 정리합니다.
   const transformPostData = (item) => {
     const authorName = item.author || item.authorName || item.authorNickname || item.nickname || '익명';
     const memberId = item.memberId ?? item.member_id ?? item.authorId ?? item.author_id ?? item.userId ?? item.user_id;

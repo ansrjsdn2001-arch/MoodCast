@@ -26,7 +26,7 @@ import java.util.Map;
         origins = {"http://localhost:5173", "http://127.0.0.1:5173"},
         allowCredentials = "true"
 )
-@RequestMapping("posts")
+@RequestMapping({"posts", "api/posts"})
 public class PostController {
 
     @Autowired
@@ -102,11 +102,14 @@ public class PostController {
     }
 
     @GetMapping("/emotion-stats/{memberId}")
-    public ResponseEntity<?> getWeeklyEmotionStats(@PathVariable Long memberId) {
+    public ResponseEntity<?> getEmotionStats(
+            @PathVariable Long memberId,
+            @RequestParam(value = "period", required = false) String period
+    ) {
         return ResponseEntity.ok(
                 Map.of(
                         "success", true,
-                        "stats", postService.getWeeklyEmotionStats(memberId)
+                        "stats", postService.getEmotionStats(memberId, period)
                 )
         );
     }
@@ -188,10 +191,8 @@ public class PostController {
     public ResponseEntity<?> createReply(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
             @PathVariable Long commentId,
-            @RequestBody Map<String, String> body
+            @RequestBody CreateCommentRequest replyRequest
     ) {
-        CreateCommentRequest replyRequest = new CreateCommentRequest();
-        replyRequest.setContent(body.get("content"));
         replyRequest.setParentCommentId(commentId);
 
         // parentComment에서 postId 조회

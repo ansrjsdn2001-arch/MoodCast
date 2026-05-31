@@ -15,5 +15,6 @@ public class CommentSummary {
     private String content;
     private String createdAt;
     private Long parentCommentId;
+    private List<PostMention> mentions = new ArrayList<>();
     private List<CommentSummary> replies = new ArrayList<>();
 }

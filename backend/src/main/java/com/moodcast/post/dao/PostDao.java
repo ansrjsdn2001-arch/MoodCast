@@ -3,6 +3,7 @@ package com.moodcast.post.dao;
 import com.moodcast.post.vo.CommentSummary;
 import com.moodcast.post.vo.EmotionStat;
 import com.moodcast.post.vo.Hashtag;
+import com.moodcast.post.vo.PostMention;
 import com.moodcast.post.vo.PostDetail;
 import com.moodcast.post.vo.Post;
 import com.moodcast.post.vo.PostSummary;
@@ -21,6 +22,14 @@ public interface PostDao {
 
     int insertPostHashtag(@Param("postId") Long postId, @Param("hashtagId") Long hashtagId);
 
+    int insertPostMention(PostMention mention);
+
+    int deletePostMentionsByPostId(@Param("postId") Long postId);
+
+    int insertCommentMention(PostMention mention);
+
+    int deleteCommentMentionsByCommentId(@Param("commentId") Long commentId);
+
     PostDetail selectPostById(@Param("postId") Long postId, @Param("viewerId") Long viewerId);
 
     int updatePost(Post post);
@@ -35,17 +44,23 @@ public interface PostDao {
 
     List<PostSummary> selectPostsByMember(@Param("memberId") Long memberId, @Param("viewerId") Long viewerId);
 
+    List<PostMention> selectMentionsByPostId(@Param("postId") Long postId);
+
+    List<PostMention> selectCommentMentionsByCommentId(@Param("commentId") Long commentId);
+
     List<CommentSummary> selectCommentsByPostId(@Param("postId") Long postId);
 
     List<CommentSummary> selectRepliesByPostId(@Param("postId") Long postId);
 
-    List<EmotionStat> selectWeeklyEmotionStats(@Param("memberId") Long memberId);
+    List<EmotionStat> selectEmotionStats(@Param("memberId") Long memberId, @Param("period") String period);
 
     int insertComment(CommentSummary comment);
 
     int updateComment(@Param("commentId") Long commentId, @Param("content") String content);
 
     int deleteComment(@Param("commentId") Long commentId);
+
+    List<Long> selectChildCommentIds(@Param("commentId") Long commentId);
 
     CommentSummary selectCommentById(@Param("commentId") Long commentId);
 

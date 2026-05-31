@@ -2,15 +2,27 @@ import axios from 'axios';
 import { MobileShell } from '../../components/layout/MobileShell';
 import { ComposerCard } from '../../components/common/ComposerCard';
 import { FeedCard } from '../../components/common/FeedCard';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { normalizePostDataArray } from '../../shared/lib/postHelpers';
 import styles from './MobileFeedPage.module.css';
+
+const EMOTION_CONFIG = {
+  1: { label: '행복해요', className: 'happy' },
+  2: { label: '슬퍼요', className: 'sad' },
+  3: { label: '차분해요', className: 'calm' },
+  4: { label: '화가 나요', className: 'angry' },
+  5: { label: '신나요', className: 'excited' },
+  6: { label: '무덤덤해요', className: 'neutral' },
+};
 
 export function MobileFeedPage() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMoodFilter, setSelectedMoodFilter] = useState(null);
   const { accessToken } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
+  const FEED_SCROLL_KEY = 'moodcast-feed-scroll-y';
 
   const normalizeContent = (content) => {
     if (!content) return '';
@@ -72,31 +84,7 @@ export function MobileFeedPage() {
     })
       .then((response) => {
         const items = response.data?.results || [];
-        setPosts(items.map((item) => {
-          const memberId = item.memberId ?? item.member_id ?? item.authorId ?? item.author_id;
-          return {
-            id: item.postId,
-            postId: item.postId,
-            memberId,
-            profileLink: memberId ? `/app/user/${memberId}` : null,
-            title: item.title,
-            author: item.author,
-            profileImageUrl: item.profileImageUrl ?? item.profile_image_url ?? item.avatarUrl ?? item.avatar_url ?? item.profileImage ?? item.imageUrl ?? item.image ?? item.photoUrl ?? item.photo ?? item.pictureUrl ?? item.picture ?? item.image_url ?? item.photo_url ?? null,
-            avatar: item.author ? item.author.charAt(0).toUpperCase() : '?',
-            time: formatTime(item.createdAt),
-            text: normalizeContent(item.content),
-            content: item.content,
-            emotionId: item.emotionId,
-            comments: item.comments ?? item.commentsCount ?? 0,
-            commentsList: item.commentsList ?? [],
-            likes: item.likes ?? 0,
-            vibes: item.vibes ?? 0,
-            likedByMe: item.likedByMe,
-            savedByMe: item.savedByMe,
-            tags: item.tags ?? '',
-            previewComment: null,
-          };
-        }));
+        setPosts(normalizePostDataArray(items));
       })
       .catch((err) => {
         console.error('게시물 조회 실패', err);
@@ -105,14 +93,60 @@ export function MobileFeedPage() {
       .finally(() => setLoading(false));
   }, [BACKSERVER, accessToken]);
 
+  const filteredPosts = useMemo(() => {
+    if (!selectedMoodFilter) return posts;
+    return posts.filter((post) => String(post.emotionId) === String(selectedMoodFilter));
+  }, [posts, selectedMoodFilter]);
+
+  useEffect(() => {
+    if (loading) return;
+
+    const savedScrollY = window.sessionStorage.getItem(FEED_SCROLL_KEY);
+    if (savedScrollY == null) return;
+
+    const targetScrollY = Number(savedScrollY);
+    window.sessionStorage.removeItem(FEED_SCROLL_KEY);
+
+    const timerId = window.setTimeout(() => {
+      window.scrollTo({ top: Number.isFinite(targetScrollY) ? targetScrollY : 0, behavior: 'auto' });
+    }, 0);
+
+    return () => window.clearTimeout(timerId);
+  }, [loading, posts.length]);
+
   return (
     <MobileShell title="MoodCast">
       <section className={styles.column}>
         <ComposerCard />
+
+        <div className={styles.moodFilterBar}>
+          <button
+            type="button"
+            className={`${styles.moodFilterChip} ${selectedMoodFilter === null ? styles.activeMoodFilter : ''}`}
+            onClick={() => setSelectedMoodFilter(null)}
+          >
+            전체
+          </button>
+          {Object.entries(EMOTION_CONFIG).map(([emotionId, emotion]) => (
+            <button
+              key={emotionId}
+              type="button"
+              className={`${styles.moodFilterChip} ${styles[emotion.className]} ${String(selectedMoodFilter) === String(emotionId) ? styles.activeMoodFilter : ''}`}
+              onClick={() => setSelectedMoodFilter(Number(emotionId))}
+            >
+              {emotion.label}
+            </button>
+          ))}
+        </div>
+
         {loading ? (
           <div>게시물을 불러오는 중입니다...</div>
+        ) : filteredPosts.length > 0 ? (
+          filteredPosts.map((post) => <FeedCard key={post.id} post={post} compact />)
+        ) : posts.length > 0 ? (
+          <div>선택한 무드의 게시물이 없습니다.</div>
         ) : (
-          posts.map((post) => <FeedCard key={post.id} post={post} compact />)
+          <div>게시물이 없습니다.</div>
         )}
       </section>
     </MobileShell>

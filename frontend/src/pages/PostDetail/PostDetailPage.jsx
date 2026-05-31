@@ -11,6 +11,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { FeedCard } from "../../components/common/FeedCard";
 import { PostDetailComments } from "../../components/common/PostDetailComments";
+import { normalizeBackendUrl } from "../../shared/lib/postHelpers";
 import styles from "./PostDetailPage.module.css";
 
 function normalizeContent(content) {
@@ -103,28 +104,38 @@ export function PostDetailPage() {
         const rawContent = data.content ?? data.body ?? "";
         const memberId =
           data.memberId ?? data.member_id ?? data.authorId ?? data.author_id;
-        const nextPost = {
-          id: data.postId,
-          postId: data.postId,
-          memberId,
-          profileLink: memberId ? `/app/user/${memberId}` : null,
+        const rawProfileImageUrl =
+          data.profileImageUrl ??
+          data.profile_image_url ??
+          data.avatarUrl ??
+          data.avatar_url ??
+          data.profileImage ??
+          data.imageUrl ??
+          data.image ??
+          data.photoUrl ??
+          data.photo ??
+          data.pictureUrl ??
+          data.picture ??
+          data.image_url ??
+          data.photo_url ??
+          null;
+        const rawImageSrcs = Array.from(
+          new Set([
+            ...(data.imageSrc ? [data.imageSrc] : []),
+            ...(data.image ? [data.image] : []),
+            ...(data.cover ? [data.cover] : []),
+            ...(data.thumbnail ? [data.thumbnail] : []),
+            ...extractImageUrls(rawContent),
+          ]),
+        ).filter(Boolean);
+          const nextPost = {
+            id: data.postId,
+            postId: data.postId,
+            memberId,
+            profileLink: memberId ? `/app/user/${memberId}` : null,
           title: data.title,
           author: authorName,
-          profileImageUrl:
-            data.profileImageUrl ??
-            data.profile_image_url ??
-            data.avatarUrl ??
-            data.avatar_url ??
-            data.profileImage ??
-            data.imageUrl ??
-            data.image ??
-            data.photoUrl ??
-            data.photo ??
-            data.pictureUrl ??
-            data.picture ??
-            data.image_url ??
-            data.photo_url ??
-            null,
+          profileImageUrl: normalizeBackendUrl(rawProfileImageUrl, BACKSERVER, "user-images"),
           avatar: authorName.charAt(0).toUpperCase(),
           time: formatTime(data.createdAt),
           text: normalizeContent(rawContent),
@@ -132,28 +143,16 @@ export function PostDetailPage() {
           emotionId: data.emotionId,
           comments: data.comments ?? 0,
           commentsList: [],
-          likes: data.likes ?? 0,
-          vibes: data.vibes ?? 0,
-          likedByMe: data.likedByMe,
-          savedByMe: data.savedByMe,
-          tags: data.tags ?? "",
-          imageSrc:
-            data.imageSrc ??
-            data.image ??
-            data.cover ??
-            data.thumbnail ??
-            extractImageUrls(rawContent)[0],
-          imageSrcs: Array.from(
-            new Set([
-              ...(data.imageSrc ? [data.imageSrc] : []),
-              ...(data.image ? [data.image] : []),
-              ...(data.cover ? [data.cover] : []),
-              ...(data.thumbnail ? [data.thumbnail] : []),
-              ...extractImageUrls(rawContent),
-            ]),
-          ).filter(Boolean),
-          imageAlt: data.imageAlt || data.author,
-        };
+            likes: data.likes ?? 0,
+            vibes: data.vibes ?? 0,
+            likedByMe: data.likedByMe,
+            savedByMe: data.savedByMe,
+            tags: data.tags ?? "",
+            mentions: data.mentions ?? [],
+            imageSrc: normalizeBackendUrl(rawImageSrcs[0] ?? null, BACKSERVER, "post-images"),
+            imageSrcs: rawImageSrcs.map((src) => normalizeBackendUrl(src, BACKSERVER, "post-images")),
+            imageAlt: data.imageAlt || data.author,
+          };
 
         setPost(nextPost);
         setCommentCount(nextPost.comments);
@@ -200,6 +199,11 @@ export function PostDetailPage() {
   }, [post]);
 
   const closeDetail = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+
     navigate("/app/feed", { replace: true });
   };
 
@@ -269,8 +273,7 @@ export function PostDetailPage() {
       <section className={styles.modal} role="dialog" aria-modal="true">
         <header className={styles.modalHeader}>
           <div>
-            <strong>게시물 상세보기</strong>
-            <p>{post?.author || "게시물"}</p>
+            <strong>{post?.author || "게시물"} 님의 게시물</strong>
           </div>
           <button
             type="button"

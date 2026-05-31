@@ -4,6 +4,7 @@ import com.moodcast.member.dao.LoginDao;
 import com.moodcast.member.dto.follow.FollowCheckResponse;
 import com.moodcast.member.dto.follow.FollowItemResponse;
 import com.moodcast.member.dto.follow.FollowResponse;
+import com.moodcast.member.dto.follow.MentionCandidateResponse;
 import com.moodcast.member.dto.login.LoginMemberResponse;
 import com.moodcast.member.dto.login.LoginRequest;
 import com.moodcast.member.dto.login.LoginResult;
@@ -15,7 +16,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.DigestException;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class LoginService {
@@ -24,6 +27,9 @@ public class LoginService {
 
     @Autowired
     private MemberValidationService memberValidationService;
+
+    @Autowired
+    private RefreshTokenRedisService refreshTokenRedisService;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -101,7 +107,16 @@ public class LoginService {
         }
 
         String accessToken = jwtService.createAccessToken(member);
-        String refreshToken = jwtService.createRefreshToken(member);
+        String tokenId = UUID.randomUUID().toString();
+        String refreshToken = jwtService.createRefreshToken(member, tokenId);
+
+        refreshTokenRedisService.saveRefreshToken(
+                member.getMemberId(),
+                tokenId,
+                refreshToken,
+                jwtService.getRefreshTokenMaxAgeSeconds()
+        );
+
         LoginMemberResponse loginMemberResponse = toLoginMemberResponse(member);
 
         LoginResult loginResult = new LoginResult(
@@ -112,6 +127,8 @@ public class LoginService {
 
         return loginResult;
     }
+
+
 
     public LoginMemberResponse getLoginMember(String accessToken) {
         if (accessToken == null || accessToken.trim().isEmpty()) {
@@ -276,6 +293,19 @@ public class LoginService {
         return loginDao.getFollowingList(targetId, loginId);
     }
 
+    public List<MentionCandidateResponse> getMentionCandidates(Long memberId, String keyword) {
+        if (memberId == null) {
+            throw new IllegalArgumentException("멤버 ID가 필요합니다.");
+        }
+
+        String normalizedKeyword = keyword == null ? null : keyword.trim();
+        if (normalizedKeyword != null && normalizedKeyword.isEmpty()) {
+            normalizedKeyword = null;
+        }
+
+        return loginDao.getMentionCandidates(memberId, normalizedKeyword);
+    }
+
     private Long getMemberIdFromHeader(String authHeader) {
         String token = extractAccessToken(authHeader);
 
@@ -292,7 +322,60 @@ public class LoginService {
         if (token.isEmpty()) {
             throw new IllegalArgumentException("로그인이 필요합니다.");
         }
-
         return token;
+    }
+
+    // accessToken 재발급
+    public LoginResult refreshAccessToken(String refreshToken) {
+        // 토큰 검증 및 memberId 추출
+        Long memberId = jwtService.getMemberIdFromRefreshToken(refreshToken);
+        String tokenId = jwtService.getTokenIdFromRefreshToken(refreshToken);
+
+        // redis의 최신 refreshToken과 일치하는지 체크
+        if (!refreshTokenRedisService.matches(memberId, tokenId, refreshToken)) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        // 회원있는지 체크
+        Member member = loginDao.findMemberById(memberId);
+        if (member == null) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        // 로그인 가능여부 서비스 정책 체크
+        checkLoginAllowed(member);
+
+        // 기존 refreshToken은 재사용하지 못하게 삭제
+        refreshTokenRedisService.deleteRefreshToken(memberId, tokenId);
+
+        // 새 로그인 세션 tokenId 생성
+        String newTokenId = UUID.randomUUID().toString();
+
+        // accessToken과 refreshToken 새로 발급
+        String newAccessToken = jwtService.createAccessToken(member);
+        String newRefreshToken = jwtService.createRefreshToken(member, newTokenId);
+
+        // 새 refreshToken을 Redis에 저장
+        refreshTokenRedisService.saveRefreshToken(
+                member.getMemberId(),
+                newTokenId,
+                newRefreshToken,
+                jwtService.getRefreshTokenMaxAgeSeconds()
+        );
+
+        LoginMemberResponse loginMemberResponse = toLoginMemberResponse(member);
+
+        return new LoginResult(
+                newAccessToken,
+                newRefreshToken,
+                loginMemberResponse
+        );
+    }
+
+    // 로그아웃 시 refreshToken 있으면 redis에서 삭제
+    public void logout(String refreshToken) {
+        Long memberId = jwtService.getMemberIdFromRefreshToken(refreshToken);
+        String tokenId = jwtService.getTokenIdFromRefreshToken(refreshToken);
+        refreshTokenRedisService.deleteRefreshToken(memberId, tokenId);
     }
 }
