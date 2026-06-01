@@ -1,5 +1,6 @@
 package com.moodcast.member.service;
 
+import com.moodcast.member.dto.login.RefreshTokenInfo;
 import com.moodcast.member.vo.Member;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -128,62 +129,45 @@ public class JwtService {
                 .build();
     }
 
-    // refresh 토큰 검증 및 memberId 꺼내서 리턴
-    public Long getMemberIdFromRefreshToken(String refreshToken) {
-        // 토큰 유무 및 공백 검증
+    // refresh 토큰을 한 번만 파싱해서 공통 검증을 처리함
+    private Claims parseRefreshToken(String refreshToken) {
         if (refreshToken == null || refreshToken.trim().isEmpty()) {
             throw new IllegalArgumentException("로그인이 필요합니다.");
         }
 
         try {
-            // 토큰 파싱
             Claims claims = parseToken(refreshToken);
-            // 토큰 타입 꺼내기
             String tokenType = claims.get("type", String.class);
 
-            // 토큰 타입이 REFRESH인지 체크
-            // npe 방어
             if (!"REFRESH".equals(tokenType)) {
                 throw new IllegalArgumentException("로그인이 필요합니다.");
             }
 
-            return Long.parseLong(claims.getSubject());
-
-            // 통합 예외처리 (구체적인 원인은 안알려줌)
+            return claims;
         } catch (JwtException | IllegalArgumentException e) {
             throw new IllegalArgumentException("로그인이 필요합니다.");
         }
     }
 
+    // refresh 토큰에서 memberId와 tokenId를 같이 꺼냄
+    public RefreshTokenInfo getRefreshTokenInfo(String refreshToken) {
+        Claims claims = parseRefreshToken(refreshToken);
+        String tokenId = claims.get("tokenId", String.class);
+
+        if (tokenId == null || tokenId.trim().isEmpty()) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        return new RefreshTokenInfo(Long.parseLong(claims.getSubject()), tokenId);
+    }
+
+    // 기존 호출부가 깨지지 않도록 memberId만 필요한 경우도 지원함
+    public Long getMemberIdFromRefreshToken(String refreshToken) {
+        return getRefreshTokenInfo(refreshToken).getMemberId();
+    }
+
+    // 기존 호출부가 깨지지 않도록 tokenId만 필요한 경우도 지원함
     public String getTokenIdFromRefreshToken(String refreshToken) {
-        // 토큰 유무 및 공백 검증
-        if (refreshToken == null || refreshToken.trim().isEmpty()) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
-        }
-
-        try {
-            // 토큰 파싱
-            Claims claims = parseToken(refreshToken);
-            // 토큰 타입 꺼내기
-            String tokenType = claims.get("type", String.class);
-
-            // 토큰 타입이 REFRESH인지 체크
-            // npe 방어
-            if (!"REFRESH".equals(tokenType)) {
-                throw new IllegalArgumentException("로그인이 필요합니다.");
-            }
-
-            String tokenId = claims.get("tokenId", String.class);
-
-            if (tokenId == null || tokenId.trim().isEmpty()) {
-                throw new IllegalArgumentException("로그인이 필요합니다.");
-            }
-
-            return tokenId;
-
-            // 통합 예외처리 (구체적인 원인은 안알려줌)
-        } catch (JwtException | IllegalArgumentException e) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
-        }
+        return getRefreshTokenInfo(refreshToken).getTokenId();
     }
 }

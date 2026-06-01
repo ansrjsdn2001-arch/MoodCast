@@ -15,9 +15,11 @@ import { CreatePostPage } from "./pages/CreatePost/CreatePostPage";
 import { PostDetailPage } from "./pages/PostDetail/PostDetailPage";
 import { ProfileSetupPage } from "./pages/ProfileSetup/ProfileSetupPage";
 import { LoginPage } from "./pages/Auth/LoginPage";
+import { SocialCallbackPage } from "./pages/Auth/SocialCallbackPage";
+import { SocialExtraSignupPage } from "./pages/Auth/SocialExtraSignupPage";
 import { AdminRoutes } from "./pages/Admin/AdminPages";
 import { SignupPage } from "./pages/Auth/SignupPage";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { useAuthStore } from "./stores/useAuthStore";
 import { RequireAuth } from "./components/common/RequireAuth";
@@ -25,10 +27,88 @@ import { RequireAuth } from "./components/common/RequireAuth";
 function AppRoutes() {
   // 화면 너비에 따라 데스크톱 버전 또는 모바일 버전을 자동으로 선택합니다.
   const desktop = useIsDesktop();
-  const navigate = useNavigate();
+  const [authChecked, setAuthChecked] = useState(false);
   const { accessToken, setAuthData, clearAuthData } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
-  const authRoute = (element) => <RequireAuth>{element}</RequireAuth>;
+  const authRoute = (element) => (
+    <RequireAuth authChecked={authChecked}>{element}</RequireAuth>
+  );
+
+  useEffect(() => {
+    let refreshPromise = null;
+
+    // 모든 axios 요청에 현재 accessToken을 자동으로 붙임
+    const requestInterceptor = axios.interceptors.request.use((config) => {
+      const token = useAuthStore.getState().accessToken;
+
+      if (token && !config.headers?.Authorization) {
+        config.headers = {
+          ...config.headers,
+          Authorization: "Bearer " + token,
+        };
+      }
+
+      return config;
+    });
+
+    // accessToken 만료 시 refresh를 한 번만 시도하고 원래 요청을 다시 보냄
+    const responseInterceptor = axios.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+        const status = error.response?.status;
+        const requestUrl = originalRequest?.url || "";
+        const isRefreshRequest = requestUrl.includes("/auth/refresh");
+
+        if (
+          (status === 401 || status === 403) &&
+          originalRequest &&
+          !originalRequest._retry &&
+          !isRefreshRequest
+        ) {
+          originalRequest._retry = true;
+
+          if (!refreshPromise) {
+            refreshPromise = axios
+              .post(
+                `${BACKSERVER}/auth/refresh`,
+                {},
+                {
+                  withCredentials: true,
+                },
+              )
+              .then((res) => {
+                setAuthData(res.data.accessToken, res.data.member);
+                return res.data.accessToken;
+              })
+              .catch((refreshError) => {
+                clearAuthData();
+                throw refreshError;
+              })
+              .finally(() => {
+                refreshPromise = null;
+              });
+          }
+
+          const newAccessToken = await refreshPromise;
+
+          originalRequest.headers = {
+            ...originalRequest.headers,
+            Authorization: "Bearer " + newAccessToken,
+          };
+
+          return axios(originalRequest);
+        }
+
+        return Promise.reject(error);
+      },
+    );
+
+    return () => {
+      axios.interceptors.request.eject(requestInterceptor);
+      axios.interceptors.response.eject(responseInterceptor);
+    };
+  }, [BACKSERVER, setAuthData, clearAuthData]);
 
   /*
     새로고침 후 sessionStorage에 남아있는 accessToken이
@@ -61,6 +141,8 @@ function AppRoutes() {
       } catch (err) {
         console.log("로그인 상태복구 실패", err);
         clearAuthData();
+      } finally {
+        setAuthChecked(true);
       }
     };
     checkLogin();
@@ -71,6 +153,8 @@ function AppRoutes() {
       <Route path="/" element={<Navigate to="/app/feed" replace />} />
       <Route path="/auth/login" element={<LoginPage />} />
       <Route path="/auth/signup" element={<SignupPage />} />
+      <Route path="/auth/kakao/callback" element={<SocialCallbackPage />} />
+      <Route path="/auth/social/signup" element={<SocialExtraSignupPage />} />
       <Route path="/auth/setup" element={<ProfileSetupPage />} />
       <Route path="/app/login" element={<LoginPage />} />
       <Route path="/app/signup" element={<SignupPage />} />
@@ -85,7 +169,7 @@ function AppRoutes() {
       <Route path="/app/chat" element={authRoute(<MoodChatPage />)} />
       <Route
         path="/app/group-chat"
-        element={<Navigate to="/app/mood-chat" replace />}
+        element={authRoute(<Navigate to="/app/mood-chat" replace />)}
       />
       {/* 마이페이지와 유저페이지를 ProfilePage 하나로 통합함 */}
       <Route path="/app/profile" element={authRoute(<ProfilePage />)} />
@@ -116,12 +200,10 @@ function AppRoutes() {
       <Route path="/app/write" element={authRoute(<CreatePostPage />)} />
       <Route path="/app/create" element={authRoute(<CreatePostPage />)} />
       <Route path="/app/post/:postId" element={authRoute(<PostDetailPage />)} />
-      {/* /app/mood는 게시물 작성 화면으로 안내합니다. */}
       <Route
         path="/app/mood"
         element={authRoute(<Navigate to="/app/write" replace />)}
       />
-      {/* /app/community는 피드 홈으로 안내합니다. */}
       <Route
         path="/app/community"
         element={authRoute(<Navigate to="/app/feed" replace />)}

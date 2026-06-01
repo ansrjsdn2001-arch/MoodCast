@@ -32,6 +32,14 @@
         limit 1
     </select>
 
+    <select id="findPasswordHashByMemberId" resultType="String">
+        select
+            password_hash
+        from members
+        where member_id = #{memberId}
+        limit 1
+    </select>
+
     <select id="findMemberById" resultType="member">
         select
             member_id,
@@ -57,6 +65,23 @@
     <update id="updateLastLoginAt">
         update members
         set last_login_at = now(6)
+        where member_id = #{memberId}
+    </update>
+
+    <update id="updatePasswordHash">
+        update members
+        set
+            password_hash = #{passwordHash},
+            updated_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
+        where member_id = #{memberId}
+    </update>
+
+    <update id="withdrawMember">
+        update members
+        set
+            status = 'WITHDRAW',
+            deleted_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00'),
+            updated_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
         where member_id = #{memberId}
     </update>
 
