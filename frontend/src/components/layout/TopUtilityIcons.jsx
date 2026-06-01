@@ -105,12 +105,15 @@ function TopUtilityIconsBase({ onSearch }) {
 
     if (item?.eventType === 'CHAT_NOTIFICATION') {
       const authorName = item?.senderNickname || '회원';
+      const messageCount = Number(item?.count || 1);
       const preview = formatChatPreview(item?.content);
-      if (!preview) {
-        return `${authorName}님이 보낸 새 메시지`;
+      const messageText = `${authorName}님이 보내신 메세지가 ${messageCount}건 있습니다`;
+
+      if (messageCount > 1) {
+        return preview ? `${messageText}: ${preview}` : messageText;
       }
 
-      return `${authorName}님이 보낸 새 메시지: ${preview}`;
+      return preview ? `${messageText}: ${preview}` : messageText;
     }
 
     return item?.content || '';
@@ -122,6 +125,7 @@ function TopUtilityIconsBase({ onSearch }) {
     }
 
     removeNotification(item.id);
+    setNotificationsOpen(false);
 
     if (item.postId) {
       if (item.eventType === 'COMMENT_NOTIFICATION') {

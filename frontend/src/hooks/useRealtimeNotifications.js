@@ -6,6 +6,17 @@ function getNotificationStorageKey(memberId) {
   return memberId ? `moodcast-notifications-${memberId}` : null;
 }
 
+function normalizeStoredNotification(notification) {
+  if (!notification || typeof notification !== 'object') {
+    return null;
+  }
+
+  return {
+    ...notification,
+    count: Number(notification.count || 1),
+  };
+}
+
 function readStoredNotifications(memberId) {
   if (!memberId || typeof window === 'undefined') {
     return [];
@@ -18,10 +29,45 @@ function readStoredNotifications(memberId) {
     }
 
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.map(normalizeStoredNotification).filter(Boolean) : [];
   } catch (error) {
     return [];
   }
+}
+
+function upsertNotification(previousNotifications, payload, notificationId) {
+  const isChatNotification = payload?.eventType === 'CHAT_NOTIFICATION';
+  const nextItem = {
+    id: notificationId,
+    ...payload,
+    count: Number(payload?.count || 1),
+  };
+
+  if (!isChatNotification) {
+    return [nextItem, ...previousNotifications.filter((item) => item.id !== notificationId)];
+  }
+
+  const senderId = Number(payload?.senderId || 0);
+  const existingIndex = previousNotifications.findIndex(
+    (item) =>
+      item?.eventType === 'CHAT_NOTIFICATION' &&
+      Number(item?.senderId || 0) === senderId,
+  );
+
+  if (existingIndex < 0) {
+    return [nextItem, ...previousNotifications.filter((item) => item.id !== notificationId)];
+  }
+
+  const existingItem = previousNotifications[existingIndex];
+  const mergedItem = {
+    ...existingItem,
+    ...payload,
+    id: existingItem.id,
+    count: Number(existingItem.count || 1) + 1,
+  };
+
+  const nextNotifications = previousNotifications.filter((_, index) => index !== existingIndex);
+  return [mergedItem, ...nextNotifications.filter((item) => item.id !== notificationId)];
 }
 
 export function useRealtimeNotifications(memberId) {
@@ -75,18 +121,20 @@ export function useRealtimeNotifications(memberId) {
             `${payload.eventType || 'notification'}-${payload.chatId || payload.commentId || Date.now()}`;
 
           setNotifications((prevNotifications) => {
-            const nextNotifications = [
-              {
-                id: notificationId,
-                ...payload,
-              },
-              ...prevNotifications.filter((item) => item.id !== notificationId),
-            ];
+            const normalizedNotifications = prevNotifications
+              .map(normalizeStoredNotification)
+              .filter(Boolean);
+
+            const nextNotifications = upsertNotification(
+              normalizedNotifications,
+              payload,
+              notificationId,
+            );
 
             return nextNotifications.slice(0, 5);
           });
         } catch (error) {
-          console.error('채팅 알림 메시지 수신 실패', error);
+          console.error('梨꾪똿 ?뚮┝ 硫붿떆吏 ?섏떊 ?ㅽ뙣', error);
         }
       });
     };
@@ -96,7 +144,7 @@ export function useRealtimeNotifications(memberId) {
     };
 
     client.onStompError = (frame) => {
-      console.error('채팅 알림 STOMP 오류', frame.headers?.message || frame.body);
+      console.error('梨꾪똿 ?뚮┝ STOMP ?ㅻ쪟', frame.headers?.message || frame.body);
     };
 
     client.activate();
@@ -111,9 +159,21 @@ export function useRealtimeNotifications(memberId) {
   const unreadCount = useMemo(() => notifications.length, [notifications]);
 
   const removeNotification = (notificationId) => {
-    setNotifications((prevNotifications) =>
-      prevNotifications.filter((item) => item.id !== notificationId),
-    );
+    setNotifications((prevNotifications) => {
+      const nextNotifications = prevNotifications
+        .map(normalizeStoredNotification)
+        .filter(Boolean)
+        .filter((item) => item.id !== notificationId);
+
+      if (memberId && typeof window !== 'undefined') {
+        window.localStorage.setItem(
+          getNotificationStorageKey(memberId),
+          JSON.stringify(nextNotifications.slice(0, 5)),
+        );
+      }
+
+      return nextNotifications;
+    });
   };
 
   const clearNotifications = () => {
