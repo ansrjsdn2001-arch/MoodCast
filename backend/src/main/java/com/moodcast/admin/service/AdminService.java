@@ -19,6 +19,7 @@ import com.moodcast.admin.vo.AdminStatisticsTrend;
 import com.moodcast.admin.vo.AdminUserManagementSummary;
 import com.moodcast.member.dto.login.LoginMemberResponse;
 import com.moodcast.member.service.LoginService;
+import com.moodcast.member.service.RefreshTokenRedisService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.slf4j.Logger;
@@ -57,6 +58,9 @@ public class AdminService {
 
     @Autowired // 기존 로그인 토큰 검증 로직을 재사용하기 위해 LoginService를 연결합니다.
     private LoginService loginService;
+
+    @Autowired
+    private RefreshTokenRedisService refreshTokenRedisService;
 
     /* ==========================================================================
      * 관리자 권한 확인
@@ -642,6 +646,8 @@ public class AdminService {
         if (updated != 1) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "회원 정지 처리에 실패했습니다.");
         }
+
+        refreshTokenRedisService.deleteAllRefreshTokens(memberId);
 
         String actionDetail = buildSuspendActionDetail(request.getSuspendType(), suspendedUntil);
         adminDao.insertAdminActionLog(

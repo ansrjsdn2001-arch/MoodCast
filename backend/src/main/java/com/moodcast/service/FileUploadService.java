@@ -39,13 +39,12 @@ import java.util.stream.Collectors;
 @Service
 public class FileUploadService {
 
-    // 이 서비스는 이미지 파일을 S3에 업로드하고,
-    // 예전에 로컬로 저장하던 URL을 S3 URL로 정리하는 일을 함.
-    // 부트캠프에서 처음 보는 사람이 보면 크게 두 가지 역할임.
-    // 1) 이미지 업로드 처리
-    // 2) DB에 남은 로컬 이미지 링크 정리
+    // 이 서비스는 두 가지 역할을 가짐.
+    // 1) 현재 운영 중인 이미지 업로드/삭제/조회 작업 (S3 기반)
+    // 2) 이전 로컬 uploads/ 기반 URL을 정리하기 위한 legacy 호환/이관 작업
     private static final String USER_IMAGE_FOLDER = "user-images";
     private static final String POST_IMAGE_FOLDER = "post-images";
+    private static final String CHAT_IMAGE_FOLDER = "chat-images";
 
     // S3와 통신하는 클라이언트임. 실제로 S3에 올리거나 지울 때 사용함.
     private final S3Client s3Client;
@@ -137,6 +136,23 @@ public class FileUploadService {
         }
     }
 
+    public List<Map<String, String>> uploadImages(List<MultipartFile> files, String folderType, String baseUrl) {
+        if (files == null || files.isEmpty()) {
+            throw new IllegalArgumentException("파일이 비어있습니다.");
+        }
+
+        if (files.size() > 5) {
+            throw new IllegalArgumentException("이미지는 최대 5개까지 업로드할 수 있습니다.");
+        }
+
+        List<Map<String, String>> uploadedFiles = new ArrayList<>();
+        for (MultipartFile file : files) {
+            uploadedFiles.add(uploadImage(file, folderType, baseUrl));
+        }
+
+        return uploadedFiles;
+    }
+
     // 파일명을 받아 S3에서 삭제함.
     // 로컬 디스크에서 지우는 것이 아니라 S3 버킷에서 지우는 것임.
     public boolean deleteImage(String filename) {
@@ -182,10 +198,9 @@ public class FileUploadService {
                 .body(bytes.asByteArray());
     }
 
-    // 로컬 서버의 uploads 폴더에 남아 있는 예전 파일을 S3로 옮기는 메서드임.
-    // 이 메서드는 파일을 찾아서 하나씩 S3로 업로드하고, 필요한 경우 로컬 파일을 지움.
-    // 부트캠프에서 말하는 "legacy migration" 역할을 함.
-    public Map<String, Map<String, String>> migrateLocalUploads(boolean deleteAfterUpload) {
+    // legacy uploads/ 폴더에 남아 있는 예전 파일을 S3로 옮기는 메서드임.
+    // 일반 웹 업로드 흐름과는 별개로, 한 번만 수행하는 운영 도구 역할임.
+    public Map<String, Map<String, String>> migrateLegacyLocalUploads(boolean deleteAfterUpload) {
         Path uploadPath = resolveLocalUploadPath();
 
         if (!Files.exists(uploadPath)) {
@@ -210,11 +225,10 @@ public class FileUploadService {
         }
     }
 
-    // 이 메서드는 로컬 파일 이관과 DB URL 업데이트를 한 번에 처리함.
+    // 이 메서드는 legacy 로컬 파일 이관과 DB URL 업데이트를 한 번에 처리함.
     // 예전 로컬 업로드 URL이 DB에 남아 있으면, 그걸 S3 URL로 바꿔줌.
-    // 그래서 이 메서드 하나만 호출하면 파일과 DB 둘 다 정리할 수 있음.
-    public Map<String, Object> migrateLocalUploadsAndDatabase(boolean deleteAfterUpload) {
-        Map<String, Map<String, String>> migratedFiles = migrateLocalUploads(deleteAfterUpload);
+    public Map<String, Object> migrateLegacyLocalUploadsAndDatabase(boolean deleteAfterUpload) {
+        Map<String, Map<String, String>> migratedFiles = migrateLegacyLocalUploads(deleteAfterUpload);
         MigrationCounts migrationCounts = updateDatabaseReferences(migratedFiles);
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -699,6 +713,7 @@ public class FileUploadService {
         return switch (normalized) {
             case "user", "profile", "user-images", "profile-images" -> USER_IMAGE_FOLDER;
             case "post", "feed", "post-images" -> POST_IMAGE_FOLDER;
+            case "chat", "chat-images" -> CHAT_IMAGE_FOLDER;
             default -> POST_IMAGE_FOLDER;
         };
     }

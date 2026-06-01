@@ -6,6 +6,7 @@ import { MobileShell } from "../../components/layout/MobileShell";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useIsDesktop } from "../../hooks/useViewportWidth";
 import { formatKoreanTime } from "../../shared/lib/dateTime";
+import { parseChatContent, serializeChatContent } from "../../shared/lib/chatContent";
 import {
   createGroupChatRoom,
   deleteGroupChatMessage,
@@ -37,6 +38,7 @@ function normalizeRoom(room) {
 
 function normalizeMessage(message, timeCache) {
   const messageKey = message?.messageId ?? message?.id;
+  const parsedContent = parseChatContent(message?.content ?? "");
   const cachedTime = timeCache?.get?.(messageKey);
   const computedTime = message?.time || (message?.createdAt ? formatKoreanTime(message.createdAt) : "");
   const time = cachedTime || computedTime;
@@ -51,7 +53,9 @@ function normalizeMessage(message, timeCache) {
     senderId: Number(message?.senderId),
     senderName: message?.senderName || "Member",
     profileImageUrl: message?.profileImageUrl || "",
-    content: message?.content || "",
+    content: parsedContent.text || message?.content || "",
+    imageUrls: parsedContent.imageUrls,
+    rawContent: message?.content || "",
     time,
     createdAt: message?.createdAt || "",
     readCount: Number(message?.readCount || 0),
@@ -108,15 +112,43 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
     try {
       const response = await fetchGroupChatRooms(currentMemberId);
       const nextRooms = Array.isArray(response.data) ? response.data : [];
-      setRooms(
-        nextRooms.map((room) => {
-          const normalizedRoom = normalizeRoom(room);
-          if (activeRoom?.roomId && Number(activeRoom.roomId) === Number(normalizedRoom.roomId)) {
-            return { ...normalizedRoom, unreadCount: 0 };
-          }
-          return normalizedRoom;
-        }),
-      );
+      const normalizedRooms = nextRooms.map((room) => normalizeRoom(room));
+
+      setRooms((previousRooms) => {
+        const previousById = new Map(
+          previousRooms.map((room) => [String(room.roomId), room]),
+        );
+        const nextById = new Map(
+          normalizedRooms.map((room) => [String(room.roomId), room]),
+        );
+
+        const mergedRooms = previousRooms
+          .map((previousRoom) => {
+            const nextRoom = nextById.get(String(previousRoom.roomId));
+            if (!nextRoom) {
+              return previousRoom;
+            }
+
+            const isActive = activeRoom?.roomId && Number(activeRoom.roomId) === Number(nextRoom.roomId);
+
+            return {
+              ...previousRoom,
+              ...nextRoom,
+              unreadCount: isActive ? 0 : nextRoom.unreadCount,
+            };
+          })
+          .filter((room) => nextById.has(String(room.roomId)));
+
+        const appendedRooms = normalizedRooms.filter(
+          (room) => !previousById.has(String(room.roomId)),
+        );
+
+        if (previousRooms.length === 0) {
+          return [...mergedRooms, ...appendedRooms];
+        }
+
+        return [...mergedRooms, ...appendedRooms];
+      });
     } catch (requestError) {
       console.error("Group room list load failed", requestError);
       setRooms([]);
@@ -265,7 +297,7 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
     handleIncomingMessage,
     async (payload) => {
       if (!payload || Number(payload.memberId) === Number(currentMemberId)) {
-        return;
+        return false;
       }
 
       await refreshMessages(payload.roomId, false);
@@ -369,25 +401,38 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
     }
   };
 
-  const handleSubmitMessage = async (event) => {
-    event.preventDefault();
+  const handleSubmitMessage = async (payload = {}) => {
+    const trimmedValue = typeof payload?.text === "string" ? payload.text.trim() : "";
+    const imageUrls = Array.isArray(payload?.imageUrls) ? payload.imageUrls : [];
 
-    const trimmedValue = messageValue.trim();
-    if (!trimmedValue || !activeRoom?.roomId || !currentMemberId || isSending) {
+    if (
+      (!trimmedValue && imageUrls.length === 0) ||
+      !activeRoom?.roomId ||
+      !currentMemberId ||
+      isSending
+    ) {
       return;
     }
 
     setIsSending(true);
-    setMessageValue("");
 
     try {
+      const content = serializeChatContent({
+        text: trimmedValue,
+        imageUrls,
+      });
+
+      if (!content) {
+        setError("메시지나 이미지를 입력해주세요.");
+        return;
+      }
       const pendingMessage = normalizeMessage({
         messageId: `pending-${Date.now()}`,
         roomId: activeRoom.roomId,
         senderId: currentMemberId,
         senderName: member?.nickname || member?.name || "나",
         profileImageUrl: member?.profileImageUrl || "",
-        content: trimmedValue,
+        content,
         createdAt: new Date().toISOString(),
         readCount: 0,
         unreadCount: 0,
@@ -399,13 +444,13 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
 
       const published = sendMessage(activeRoom.roomId, {
         senderId: currentMemberId,
-        content: trimmedValue,
+        content,
       });
 
       if (!published) {
         const response = await axios.post(`${API_BASE}/chat/rooms/${activeRoom.roomId}/messages`, {
           senderId: currentMemberId,
-          content: trimmedValue,
+          content,
         });
 
         const savedMessage = normalizeMessage(response.data, groupMessageTimeCacheRef.current);
@@ -432,14 +477,13 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
         await syncRoomReadState(activeRoom.roomId, lastMessageId);
       }
       await refreshRooms();
+      return true;
     } catch (requestError) {
       console.error("Group message send failed", requestError);
       setError(requestError.response?.data?.message || "Unable to send message.");
+      return false;
     } finally {
       setIsSending(false);
-      requestAnimationFrame(() => {
-        messageInputRef.current?.focus();
-      });
     }
   };
 
@@ -482,9 +526,6 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
       messages={messages}
       connected={connected}
       currentMemberId={currentMemberId}
-      messageInputRef={messageInputRef}
-      messageValue={messageValue}
-      onMessageChange={(event) => setMessageValue(event.target.value)}
       onSubmitMessage={handleSubmitMessage}
       onDeleteMessage={handleDeleteMessage}
       onLeaveRoom={leaveRoomHandler}

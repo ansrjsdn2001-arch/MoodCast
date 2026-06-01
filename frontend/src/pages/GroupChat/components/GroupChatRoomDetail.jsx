@@ -1,14 +1,20 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import KeyboardArrowLeftRoundedIcon from "@mui/icons-material/KeyboardArrowLeftRounded";
+import KeyboardArrowRightRoundedIcon from "@mui/icons-material/KeyboardArrowRightRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import SentimentSatisfiedAltRoundedIcon from "@mui/icons-material/SentimentSatisfiedAltRounded";
 import styles from "../../MoodChat/MoodChatPage.module.css";
 import { defaultAvatarSrc } from "../../../shared/lib/defaultAvatar";
 import { formatKoreanTime } from "../../../shared/lib/dateTime";
+import { uploadChatImages } from "../../../shared/api/fileUploadApi";
+import { EmojiPicker } from "../../../shared/ui/emoji-picker/EmojiPicker";
+import { RichTextContent } from "../../../shared/ui/rich-text/RichTextContent";
 
 function getRoomTitle(activeRoom) {
   return activeRoom?.roomName || "그룹 채팅방";
@@ -30,14 +36,19 @@ function isNearBottom(element) {
   return distance < 80;
 }
 
+function createImageEntries(files) {
+  return files.map((file, index) => ({
+    id: `${file.name}-${file.lastModified}-${index}`,
+    file,
+    previewUrl: URL.createObjectURL(file),
+  }));
+}
+
 export function GroupChatRoomDetail({
   activeRoom,
   messages,
   connected,
   currentMemberId,
-  messageInputRef,
-  messageValue,
-  onMessageChange,
   onSubmitMessage,
   onDeleteMessage,
   onLeaveRoom,
@@ -47,17 +58,182 @@ export function GroupChatRoomDetail({
 }) {
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [showScrollBottomButton, setShowScrollBottomButton] = useState(false);
+  const [messageValue, setMessageValue] = useState("");
+  const [selectedImages, setSelectedImages] = useState([]);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [error, setError] = useState("");
+  const [imageViewer, setImageViewer] = useState(null);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const messagesRef = useRef(null);
   const bottomRef = useRef(null);
+  const imageInputRef = useRef(null);
+  const messageInputRef = useRef(null);
+  const selectedImagesRef = useRef([]);
   const isUserNearBottomRef = useRef(true);
 
-  const scrollToBottom = (behavior = "auto") => {
-    const element = bottomRef.current;
+  useEffect(() => {
+    selectedImagesRef.current = selectedImages;
+  }, [selectedImages]);
+
+  useEffect(() => {
+    return () => {
+      selectedImagesRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!imageViewer) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setImageViewer(null);
+        return;
+      }
+
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        moveImageViewer(-1);
+        return;
+      }
+
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        moveImageViewer(1);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [imageViewer]);
+
+  const clearSelectedImages = () => {
+    setSelectedImages((previousImages) => {
+      previousImages.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+      return [];
+    });
+
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
+  };
+
+  const handleImageSelection = (event) => {
+    const files = Array.from(event.target.files || []).filter((file) =>
+      file.type.startsWith("image/"),
+    );
+
+    event.target.value = "";
+
+    if (files.length === 0) {
+      return;
+    }
+
+    if (files.length > 5) {
+      setError("이미지는 최대 5개까지 업로드할 수 있습니다.");
+      return;
+    }
+
+    setError("");
+    setSelectedImages((previousImages) => {
+      previousImages.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+      return createImageEntries(files);
+    });
+  };
+
+  const removeSelectedImage = (imageId) => {
+    setSelectedImages((previousImages) => {
+      const removedImage = previousImages.find((item) => item.id === imageId);
+      if (removedImage) {
+        URL.revokeObjectURL(removedImage.previewUrl);
+      }
+
+      return previousImages.filter((item) => item.id !== imageId);
+    });
+  };
+
+  const openImageViewer = (src, alt) => {
+    if (!src) {
+      return;
+    }
+
+    setImageViewer({ src, alt: alt || "이미지" });
+  };
+
+  const openImageViewerWithList = (images, index, alt) => {
+    const normalizedImages = Array.isArray(images)
+      ? images.filter((imageUrl) => typeof imageUrl === "string" && imageUrl.trim().length > 0)
+      : [];
+
+    if (normalizedImages.length === 0) {
+      return;
+    }
+
+    const safeIndex = Math.min(Math.max(Number(index) || 0, 0), normalizedImages.length - 1);
+    setImageViewer({
+      images: normalizedImages,
+      index: safeIndex,
+      orientation: "horizontal",
+      alt: alt || "이미지",
+    });
+  };
+
+  const handleViewerImageLoad = (event) => {
+    const { naturalWidth, naturalHeight } = event.currentTarget;
+
+    if (!naturalWidth || !naturalHeight) {
+      return;
+    }
+
+    setImageViewer((previousViewer) => {
+      if (!previousViewer) {
+        return previousViewer;
+      }
+
+      return {
+        ...previousViewer,
+        orientation: naturalHeight > naturalWidth ? "vertical" : "horizontal",
+      };
+    });
+  };
+
+  const moveImageViewer = (direction) => {
+    setImageViewer((previousViewer) => {
+      if (!previousViewer || !Array.isArray(previousViewer.images) || previousViewer.images.length === 0) {
+        return previousViewer;
+      }
+
+      const nextIndex =
+        (previousViewer.index + direction + previousViewer.images.length) %
+        previousViewer.images.length;
+
+      return {
+        ...previousViewer,
+        index: nextIndex,
+      };
+    });
+  };
+
+  const focusMessageInput = () => {
+    if (!messageInputRef.current) {
+      return;
+    }
+
+    try {
+      messageInputRef.current.focus({ preventScroll: true });
+    } catch (error) {
+      messageInputRef.current.focus();
+    }
+  };
+
+  const scrollToBottom = () => {
+    const element = messagesRef.current;
     if (!element) {
       return;
     }
 
-    element.scrollIntoView({ behavior, block: "end" });
+    element.scrollTop = element.scrollHeight;
   };
 
   const handleMessagesScroll = () => {
@@ -94,6 +270,16 @@ export function GroupChatRoomDetail({
     setShowScrollBottomButton(true);
   }, [messages.length, activeRoom?.roomId]);
 
+  useEffect(() => {
+    setIsEmojiPickerOpen(false);
+    setMessageValue("");
+    if (!activeRoom?.roomId) {
+      clearSelectedImages();
+      setError("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRoom?.roomId]);
+
   if (!activeRoom) {
     return null;
   }
@@ -102,6 +288,54 @@ export function GroupChatRoomDetail({
   const roomInitial = roomTitle.charAt(0).toUpperCase();
   const roomSubtitle = getRoomSubtitle(activeRoom, connected);
 
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    const trimmedMessage = messageValue.trim();
+
+    if ((!trimmedMessage && selectedImages.length === 0) || !activeRoom || !currentMemberId) {
+      return;
+    }
+
+    try {
+      if (selectedImages.length > 0) {
+        setIsUploadingImages(true);
+      }
+
+      let uploadedImageUrls = [];
+      if (selectedImages.length > 0) {
+        uploadedImageUrls = await uploadChatImages(selectedImages.map((item) => item.file));
+      }
+
+      const isSubmitted = await onSubmitMessage({
+        text: trimmedMessage,
+        imageUrls: uploadedImageUrls,
+      });
+      if (isSubmitted) {
+        clearSelectedImages();
+        setMessageValue("");
+        setIsEmojiPickerOpen(false);
+      }
+    } catch (requestError) {
+      console.error("그룹 채팅 메시지 전송 실패", requestError);
+      setError(
+        requestError?.response?.data?.message ||
+          (selectedImages.length > 0
+            ? "이미지 업로드 또는 전송에 실패했습니다."
+            : "메시지 전송에 실패했습니다."),
+      );
+    } finally {
+      setIsUploadingImages(false);
+      requestAnimationFrame(focusMessageInput);
+    }
+  };
+
+  const handleEmojiSelect = (emoji) => {
+    setMessageValue((previousMessage) => `${previousMessage}${emoji}`);
+    setIsEmojiPickerOpen(false);
+    requestAnimationFrame(focusMessageInput);
+  };
+
   return (
     <div className={styles.room}>
       <div className={styles.roomHeader}>
@@ -109,7 +343,7 @@ export function GroupChatRoomDetail({
           type="button"
           className={styles.backButton}
           onClick={onBack}
-          aria-label="이전으로 가기"
+          aria-label="뒤로 가기"
         >
           <ArrowBackRoundedIcon />
         </button>
@@ -192,7 +426,7 @@ export function GroupChatRoomDetail({
                     fontWeight: 600,
                   }}
                 >
-                  채팅방 나가기
+                  대화방 나가기
                 </button>
               </div>
             ) : null}
@@ -200,15 +434,20 @@ export function GroupChatRoomDetail({
         </div>
       </div>
 
-      <div ref={messagesRef} className={styles.messages} aria-live="polite" onScroll={handleMessagesScroll}>
+      <div
+        ref={messagesRef}
+        className={styles.messages}
+        aria-live="polite"
+        onScroll={handleMessagesScroll}
+      >
         {messages.length === 0 ? <p className={styles.emptyState}>아직 메시지가 없습니다.</p> : null}
-
         {messages.map((item) => {
           const isMine = Number(item.senderId) === Number(currentMemberId);
-          const senderName = item.senderName || "참여자";
+          const senderName = item.senderName || "회원";
           const senderInitial = senderName.charAt(0).toUpperCase();
           const profileImageUrl = item.profileImageUrl || defaultAvatarSrc;
           const unreadCount = Number(item.unreadCount || 0);
+          const imageUrls = Array.isArray(item.imageUrls) ? item.imageUrls : [];
 
           return (
             <div
@@ -255,18 +494,83 @@ export function GroupChatRoomDetail({
                   <div className={styles.bubbleLine}>
                     {isMine ? (
                       <>
-                        {unreadCount > 0 ? <span className={styles.unreadMarker}>{unreadCount}</span> : null}
+                        {unreadCount > 0 ? (
+                          <span className={styles.unreadMarker}>{unreadCount}</span>
+                        ) : null}
                         <div className={`${styles.bubble} ${styles.me}`}>
-                          <p>{item.content}</p>
+                          {item.content ? (
+                            <p>
+                              <RichTextContent content={item.content} className={styles.richTextContent} />
+                            </p>
+                          ) : null}
+                          {imageUrls.length > 0 ? (
+                            <div
+                              className={`${styles.messageMediaGrid} ${
+                                imageUrls.length === 1 ? styles.singleMessageMediaGrid : ""
+                              }`}
+                            >
+                              {imageUrls.map((imageUrl, index) => (
+                                <img
+                                  key={`${imageUrl}-${index}`}
+                                  className={styles.messageMediaImage}
+                                  src={imageUrl}
+                                  alt={`첨부 이미지 ${index + 1}`}
+                                  loading="lazy"
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={() => openImageViewerWithList(imageUrls, index, `첨부 이미지 ${index + 1}`)}
+                                  onKeyDown={(event) => {
+                                    if (event.key === "Enter" || event.key === " ") {
+                                      event.preventDefault();
+                                      openImageViewerWithList(imageUrls, index, `첨부 이미지 ${index + 1}`);
+                                    }
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
                       </>
                     ) : (
                       <>
                         <div className={`${styles.bubble} ${styles.them}`}>
-                          <p>{item.content}</p>
+                          {item.content ? (
+                            <p>
+                              <RichTextContent content={item.content} className={styles.richTextContent} />
+                            </p>
+                          ) : null}
+                          {imageUrls.length > 0 ? (
+                            <div
+                              className={`${styles.messageMediaGrid} ${
+                                imageUrls.length === 1 ? styles.singleMessageMediaGrid : ""
+                              }`}
+                            >
+                              {imageUrls.map((imageUrl, index) => (
+                                <img
+                                  key={`${imageUrl}-${index}`}
+                                  className={styles.messageMediaImage}
+                                  src={imageUrl}
+                                  alt={`첨부 이미지 ${index + 1}`}
+                                  loading="lazy"
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={() => openImageViewerWithList(imageUrls, index, `첨부 이미지 ${index + 1}`)}
+                                  onKeyDown={(event) => {
+                                    if (event.key === "Enter" || event.key === " ") {
+                                      event.preventDefault();
+                                      openImageViewerWithList(imageUrls, index, `첨부 이미지 ${index + 1}`);
+                                    }
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
                         {unreadCount > 0 ? (
-                          <span className={styles.unreadMarker} style={{ marginLeft: "6px", marginBottom: "4px" }}>
+                          <span
+                            className={styles.unreadMarker}
+                            style={{ marginLeft: "6px", marginBottom: "4px" }}
+                          >
                             {unreadCount}
                           </span>
                         ) : null}
@@ -287,7 +591,7 @@ export function GroupChatRoomDetail({
         <div ref={bottomRef} />
       </div>
 
-      {showScrollBottomButton ? (
+  {showScrollBottomButton ? (
         <button
           type="button"
           className={styles.scrollBottomButton}
@@ -303,38 +607,158 @@ export function GroupChatRoomDetail({
         </button>
       ) : null}
 
-      <form className={styles.composer} onSubmit={onSubmitMessage}>
-        <label className={styles.addButton} aria-label="이미지 추가" title="이미지 추가">
-          <AddRoundedIcon />
-          <input type="file" accept="image/*" />
-        </label>
-        <div className={styles.inputShell}>
-          <input
-            ref={messageInputRef}
-            placeholder="메시지를 입력하세요..."
-            value={messageValue}
-            onChange={onMessageChange}
-            disabled={!activeRoom}
-          />
-          <button
-            type="button"
-            className={styles.emojiButton}
-            aria-label="이모지"
-            title="이모지"
-            disabled={!activeRoom}
+      {imageViewer ? (
+        <div
+          className={styles.imageViewerOverlay}
+          role="presentation"
+          onClick={() => setImageViewer(null)}
+        >
+          {Array.isArray(imageViewer.images) && imageViewer.images.length > 1 ? (
+            <button
+              type="button"
+              className={`${styles.imageViewerNavButton} ${styles.imageViewerPrevButton}`}
+              aria-label="?? ???"
+              title="?? ???"
+              onClick={(event) => {
+                event.stopPropagation();
+                moveImageViewer(-1);
+              }}
+            >
+              <KeyboardArrowLeftRoundedIcon className={styles.imageViewerNavIcon} />
+            </button>
+          ) : null}
+          <div
+            className={`${styles.imageViewerContent} ${
+              imageViewer.orientation === "vertical"
+                ? styles.imageViewerVertical
+                : styles.imageViewerHorizontal
+            }`}
+            role="dialog"
+            aria-modal="true"
+            aria-label={imageViewer.alt}
+            onClick={(event) => event.stopPropagation()}
           >
-            <SentimentSatisfiedAltRoundedIcon />
+            <button
+              type="button"
+              className={styles.imageViewerClose}
+              aria-label="??? ??"
+              title="??? ??"
+              onClick={() => setImageViewer(null)}
+            >
+              <CloseRoundedIcon />
+            </button>
+            <span className={styles.imageViewerCounter}>
+              {Array.isArray(imageViewer.images) && imageViewer.images.length > 0
+                ? `${imageViewer.index + 1} / ${imageViewer.images.length}`
+                : ""}
+            </span>
+            <img
+              className={styles.imageViewerImage}
+              src={imageViewer.images?.[imageViewer.index]}
+              alt={imageViewer.alt}
+              onLoad={handleViewerImageLoad}
+              onClick={() => setImageViewer(null)}
+            />
+          </div>
+          {Array.isArray(imageViewer.images) && imageViewer.images.length > 1 ? (
+            <button
+              type="button"
+              className={`${styles.imageViewerNavButton} ${styles.imageViewerNextButton}`}
+              aria-label="?? ???"
+              title="?? ???"
+              onClick={(event) => {
+                event.stopPropagation();
+                moveImageViewer(1);
+              }}
+            >
+              <KeyboardArrowRightRoundedIcon className={styles.imageViewerNavIcon} />
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      <form className={styles.composer} onSubmit={handleSubmit}>
+        {selectedImages.length > 0 ? (
+          <div className={styles.composerPreview}>
+            <div className={styles.composerPreviewHead}>
+              <span>첨부 이미지 {selectedImages.length}/5</span>
+              <button type="button" onClick={clearSelectedImages}>
+                전체 삭제
+              </button>
+            </div>
+            <div
+              className={`${styles.composerPreviewGrid} ${
+                selectedImages.length === 1 ? styles.singleComposerPreviewGrid : ""
+              }`}
+            >
+              {selectedImages.map((image) => (
+                <div key={image.id} className={styles.composerPreviewItem}>
+                  <img src={image.previewUrl} alt={image.file.name} />
+                  <button
+                    type="button"
+                    className={styles.composerPreviewRemoveButton}
+                    onClick={() => removeSelectedImage(image.id)}
+                    aria-label="첨부 이미지 삭제"
+                    title="첨부 이미지 삭제"
+                  >
+                    <DeleteOutlineRoundedIcon />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {error ? <p className={styles.errorText}>{error}</p> : null}
+
+        <div className={styles.composerRow}>
+          <label className={styles.addButton} aria-label="이미지 추가" title="이미지 추가">
+            <AddRoundedIcon />
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageSelection}
+              disabled={!activeRoom || isUploadingImages}
+            />
+          </label>
+          <div className={styles.inputShell}>
+            <input
+              ref={messageInputRef}
+              placeholder="메시지를 입력하세요..."
+              value={messageValue}
+              onChange={onMessageChange}
+              disabled={!activeRoom || isUploadingImages}
+            />
+            <button
+              type="button"
+              className={styles.emojiButton}
+              aria-label="이모지"
+              title="이모지"
+              disabled={!activeRoom || isUploadingImages}
+              aria-expanded={isEmojiPickerOpen}
+              aria-haspopup="dialog"
+              onClick={() => setIsEmojiPickerOpen((value) => !value)}
+            >
+              <SentimentSatisfiedAltRoundedIcon />
+            </button>
+            <EmojiPicker
+              open={isEmojiPickerOpen}
+              onSelect={handleEmojiSelect}
+              onClose={() => setIsEmojiPickerOpen(false)}
+            />
+          </div>
+          <button
+            type="submit"
+            className={styles.sendButton}
+            aria-label="메시지 보내기"
+            title="메시지 보내기"
+            disabled={!activeRoom || isUploadingImages}
+          >
+            <SendRoundedIcon />
           </button>
         </div>
-        <button
-          type="submit"
-          className={styles.sendButton}
-          aria-label="메시지 보내기"
-          title="메시지 보내기"
-          disabled={!activeRoom}
-        >
-          <SendRoundedIcon />
-        </button>
       </form>
     </div>
   );

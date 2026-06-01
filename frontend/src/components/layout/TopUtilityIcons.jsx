@@ -9,6 +9,7 @@ import LoginOutlinedIcon from '@mui/icons-material/LoginOutlined';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useRealtimeNotifications } from '../../hooks/useRealtimeNotifications';
 import { defaultAvatarSrc } from '../../shared/lib/defaultAvatar';
+import { formatChatPreview } from '../../shared/lib/chatContent';
 import styles from './TopUtilityIcons.module.css';
 
 function TopUtilityIconsBase({ onSearch }) {
@@ -104,8 +105,15 @@ function TopUtilityIconsBase({ onSearch }) {
 
     if (item?.eventType === 'CHAT_NOTIFICATION') {
       const authorName = item?.senderNickname || '회원';
-      const preview = item?.content ? `: ${item.content}` : '';
-      return `${authorName}님이 보낸 새 메시지${preview}`;
+      const messageCount = Number(item?.count || 1);
+      const preview = formatChatPreview(item?.content);
+      const messageText = `${authorName}님이 보내신 메세지가 ${messageCount}건 있습니다`;
+
+      if (messageCount > 1) {
+        return preview ? `${messageText}: ${preview}` : messageText;
+      }
+
+      return preview ? `${messageText}: ${preview}` : messageText;
     }
 
     return item?.content || '';
@@ -117,6 +125,7 @@ function TopUtilityIconsBase({ onSearch }) {
     }
 
     removeNotification(item.id);
+    setNotificationsOpen(false);
 
     if (item.postId) {
       if (item.eventType === 'COMMENT_NOTIFICATION') {
@@ -132,7 +141,16 @@ function TopUtilityIconsBase({ onSearch }) {
         navigate(`/app/post/${item.postId}`);
       }
     } else if (item.eventType === 'CHAT_NOTIFICATION' && item.senderId) {
-      navigate(`/app/chat?partnerId=${item.senderId}`);
+      const partnerName = item.senderNickname || item.senderName || item.senderNameText || '';
+      const searchParams = new URLSearchParams({
+        partnerId: String(item.senderId),
+      });
+
+      if (partnerName) {
+        searchParams.set('partnerName', partnerName);
+      }
+
+      navigate(`/app/chat?${searchParams.toString()}`);
     }
   };
 

@@ -2,6 +2,7 @@ package com.moodcast.member.controller;
 
 import com.moodcast.member.dto.signup.*;
 import com.moodcast.member.service.SignupService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +15,16 @@ public class SignupController {
     @Autowired
     private SignupService signupService;
 
+    private String getClientIp(HttpServletRequest request) {
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+
+        if (forwardedFor != null && !forwardedFor.isBlank()) {
+            return forwardedFor.split(",")[0].trim();
+        }
+
+        return request.getRemoteAddr();
+    }
+
     // =======================================================================================
     // SignupController의 예외는 moodcast.common.exception의 MemberExceptionHandler가 잡음
     // 그래서 정상 응답만 직접 처리함, 예외는 작성X
@@ -21,9 +32,12 @@ public class SignupController {
 
     // 회원가입 이메일 인증번호 발송
     @PostMapping(value="auth/email/send")
-    public ResponseEntity<?> sendEmailAuthCode(@RequestBody EmailAuthSendRequest request) {
+    public ResponseEntity<?> sendEmailAuthCode(
+            @RequestBody EmailAuthSendRequest request,
+            HttpServletRequest httpRequest
+    ) {
 
-            String email = signupService.sendEmailAuthCode(request.getEmail());
+            String email = signupService.sendEmailAuthCode(request.getEmail(), getClientIp(httpRequest));
             return ResponseEntity.ok(
                     Map.of(
                             "success", true,
@@ -48,14 +62,18 @@ public class SignupController {
 
     // 회원가입 휴대폰 인증 발송
     @PostMapping(value="auth/phone/send")
-    public ResponseEntity<?> sendPhoneAuthCode(@RequestBody PhoneAuthSendRequest request) {
+    public ResponseEntity<?> sendPhoneAuthCode(
+            @RequestBody PhoneAuthSendRequest request,
+            HttpServletRequest httpRequest
+    ) {
 
-            String phone = signupService.sendPhoneAuthCode(request.getPhone());
+            PhoneAuthSendResult result = signupService.sendPhoneAuthCode(request.getPhone(), getClientIp(httpRequest));
             return ResponseEntity.ok(
                     Map.of(
                             "success", true,
                             "message", "인증번호가 발송되었습니다.",
-                            "phone", phone
+                            "phone", result.getPhone(),
+                            "authCode", result.getAuthCode()
                     )
             );
     }
@@ -75,7 +93,6 @@ public class SignupController {
     // 이메일 기본검사, 중복체크
     @GetMapping(value="check/email")
     public ResponseEntity<?> checkEmail(@RequestParam String email) {
-        System.out.println(email);
             boolean available = signupService.checkEmailAvailable(email);
             return ResponseEntity.ok(
                     Map.of(
