@@ -134,7 +134,7 @@ export function useRealtimeNotifications(memberId) {
             return nextNotifications.slice(0, 5);
           });
         } catch (error) {
-          console.error('梨꾪똿 ?뚮┝ 硫붿떆吏 ?섏떊 ?ㅽ뙣', error);
+          console.error('알림 메시지 수신 실패', error);
         }
       });
     };
@@ -144,7 +144,7 @@ export function useRealtimeNotifications(memberId) {
     };
 
     client.onStompError = (frame) => {
-      console.error('梨꾪똿 ?뚮┝ STOMP ?ㅻ쪟', frame.headers?.message || frame.body);
+      console.error('알림 STOMP 오류', frame.headers?.message || frame.body);
     };
 
     client.activate();
