@@ -1,19 +1,17 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <!--
-  愿由ъ옄 ?섏씠吏??MyBatis mapper?낅땲??
-
-  珥덈낫??湲곗? ?ㅻ챸:
-  - AdminDao ?명꽣?섏씠?ㅼ뿉 ?덈뒗 硫붿꽌?쒖? ?ㅼ젣 SQL???곌껐?⑸땲??
-  - ?꾨옒 select id="selectTotalMemberCount"??AdminDao.selectTotalMemberCount()? ?곌껐?⑸땲??
--->
+      adminDashboardSummaryMap 寃곌낵 留ㅽ븨?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
+    -->
 <mapper namespace="com.moodcast.admin.dao.AdminDao">
 
     <!--
-      ??쒕낫???붿빟 議고쉶 寃곌낵瑜?AdminDashboardSummary VO???곌껐?⑸땲??
+      adminDashboardSummaryMap 寃곌낵 留ㅽ븨?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
     -->
     <resultMap id="adminDashboardSummaryMap" type="com.moodcast.admin.vo.AdminDashboardSummary">
         <result property="totalMemberCount" column="total_member_count"/>
@@ -22,10 +20,8 @@
     </resultMap>
 
     <!--
-      ?뚯썝 紐⑸줉 議고쉶 寃곌낵瑜?AdminMember VO???곌껐?⑸땲??
-
-      DB 而щ읆紐낆? member_id泥섎읆 snake_case?닿퀬,
-      Java ?꾨뱶紐낆? memberId泥섎읆 camelCase?쇱꽌 resultMap?쇰줈 吏곸젒 ?곌껐?⑸땲??
+      adminMemberMap 寃곌낵 留ㅽ븨?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
     -->
     <resultMap id="adminMemberMap" type="com.moodcast.admin.vo.AdminMember">
         <id property="memberId" column="member_id"/>
@@ -45,11 +41,8 @@
     </resultMap>
 
     <!--
-      肄섑뀗痢?愿由?寃뚯떆湲 紐⑸줉 議고쉶 寃곌낵瑜?AdminContentPost VO???곌껐?⑸땲??
-
-      珥덈낫???ㅻ챸:
-      - post_tbl??寃뚯떆湲 ?뺣낫? members???묒꽦???뺣낫瑜??④퍡 蹂댁뿬以섏빞 ?섎?濡?
-        ?꾨옒 select?먯꽌 join??寃곌낵瑜???resultMap?쇰줈 臾띠뒿?덈떎.
+      adminContentPostMap 寃곌낵 留ㅽ븨?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
     -->
     <resultMap id="adminContentPostMap" type="com.moodcast.admin.vo.AdminContentPost">
         <id property="postId" column="post_id"/>
@@ -78,6 +71,7 @@
         <result property="authorName" column="author_name"/>
         <result property="authorNickname" column="author_nickname"/>
         <result property="parentId" column="parent_id"/>
+        <result property="moderationStatus" column="moderation_status"/>
     </resultMap>
 
     <!-- 콘텐츠 관리 해시태그 탭 조회 결과를 AdminContentHashtag VO에 연결합니다. -->
@@ -87,10 +81,12 @@
         <result property="useCount" column="use_count"/>
         <result property="postCount" column="post_count"/>
         <result property="latestPostCreatedAt" column="latest_post_created_at"/>
+        <result property="moderationStatus" column="moderation_status"/>
     </resultMap>
 
     <!--
-      愿由ъ옄 媛쒖씤 ?뺣낫 議고쉶 寃곌낵瑜?AdminProfile VO???곌껐?⑸땲??
+      adminProfileMap 寃곌낵 留ㅽ븨?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
     -->
     <resultMap id="adminProfileMap" type="com.moodcast.admin.vo.AdminProfile">
         <id property="memberId" column="member_id"/>
@@ -101,10 +97,8 @@
     </resultMap>
 
     <!--
-      ?뚯썝 ?뺣낫 ?꾩껜 蹂닿린 寃곌낵瑜?AdminMemberDetail VO???곌껐?⑸땲??
-
-      蹂댁븞??password_hash??resultMap?먮룄 ?녾퀬 ?꾨옒 select 援щЦ?먮룄 ?놁뒿?덈떎.
-      ?곕씪???꾨줎?몄뿏???묐떟?쇰줈 鍮꾨?踰덊샇 愿??媛믪씠 ?대젮媛吏 ?딆뒿?덈떎.
+      adminMemberDetailMap 寃곌낵 留ㅽ븨?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
     -->
     <resultMap id="adminMemberDetailMap" type="com.moodcast.admin.vo.AdminMemberDetail">
         <id property="memberId" column="member_id"/>
@@ -159,13 +153,19 @@
         <result property="suspendedMemberCount" column="suspended_member_count"/>
     </resultMap>
 
-    <!-- 愿由ъ옄 ??쒕낫??媛먯젙蹂??쒕룞 遺꾪룷 洹몃옒?꾩슜 議고쉶 寃곌낵?낅땲?? -->
+    <!--
+      adminEmotionActivityMap 寃곌낵 留ㅽ븨?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
+    -->
     <resultMap id="adminEmotionActivityMap" type="com.moodcast.admin.vo.AdminEmotionActivity">
         <id property="emotionId" column="emotion_id"/>
         <result property="activityCount" column="activity_count"/>
     </resultMap>
 
-    <!-- 愿由ъ옄 ??쒕낫???쒓컙蹂??쒖꽦 ?ъ슜??洹몃옒?꾩슜 議고쉶 寃곌낵?낅땲?? -->
+    <!--
+      adminActiveUserStatMap 寃곌낵 留ㅽ븨?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
+    -->
     <resultMap id="adminActiveUserStatMap" type="com.moodcast.admin.vo.AdminActiveUserStat">
         <result property="label" column="label"/>
         <result property="activeUserCount" column="active_user_count"/>
@@ -187,7 +187,10 @@
         <result property="value" column="value"/>
     </resultMap>
 
-    <!-- 愿由ъ옄 ??쒕낫??理쒓렐 ?쒕룞 紐⑸줉??議고쉶 寃곌낵?낅땲?? -->
+    <!--
+      adminRecentActivityMap 寃곌낵 留ㅽ븨?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
+    -->
     <resultMap id="adminRecentActivityMap" type="com.moodcast.admin.vo.AdminRecentActivity">
         <result property="activityType" column="activity_type"/>
         <result property="memberId" column="member_id"/>
@@ -202,13 +205,8 @@
     </resultMap>
 
     <!--
-      ?꾩껜 ?뚯썝 ??議고쉶?낅땲??
-
-      members ?뚯씠釉붿뿉 ?덈뒗 紐⑤뱺 ?뚯썝 ?섎? 議고쉶?⑸땲??
-
-      吏湲?湲곗?:
-      - ??젣 ?щ?, ?곹깭 ?щ?瑜??곕줈 嫄곕Ⅴ吏 ?딆뒿?덈떎.
-      - ?ъ슜?먭? 吏곸젒 ?뚯뒪?명븳 SELECT COUNT(*) FROM members 湲곗?怨??숈씪?⑸땲??
+      selectTotalMemberCount 荑쇰━?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
     -->
     <select id="selectTotalMemberCount" resultType="long">
         select count(*)
@@ -216,10 +214,8 @@
     </select>
 
     <!--
-      ?꾩껜 ?뚯썝 紐⑸줉 議고쉶?낅땲??
-
-      ?ъ슜??愿由??섏씠吏???꾩옱 ?좏깮 ??씠 "?꾩껜"?????뚯씠釉붿뿉 異쒕젰???곗씠?곕? 議고쉶?⑸땲??
-      吏湲덉? 紐⑤뱺 ?뚯썝??蹂댁뿬二쇰뒗 ?④퀎?대?濡?deleted_at, status, role 議곌굔??嫄몄? ?딆뒿?덈떎.
+      selectMembers 荑쇰━?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
     -->
     <select id="selectMembers" resultMap="adminMemberMap">
         select
@@ -242,13 +238,8 @@
     </select>
 
     <!--
-      肄섑뀗痢?愿由?寃뚯떆湲 紐⑸줉 議고쉶?낅땲??
-
-      議고쉶 湲곗?:
-      - post_tbl??寃뚯떆湲??理쒖떊?쒖쑝濡?議고쉶?⑸땲??
-      - deleted_yn??Y??寃뚯떆湲??愿由ъ옄 ?붾㈃?먯꽌???곹깭 "??젣"濡?蹂댁뿬以섏빞 ?섎?濡??쒖쇅?섏? ?딆뒿?덈떎.
-      - ?묒꽦?먮뒗 members? join?댁꽌 ?대쫫/?됰꽕?꾩쓣 ?④퍡 ?대젮以띾땲??
-      - 寃뚯떆湲 議고쉶媛 ?덉젙?곸쑝濡??숈옉?섎룄濡??꾩닔 ?뚯씠釉붿씤 post_tbl, members留??ъ슜?⑸땲??
+      selectAdminContentPosts 荑쇰━?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
     -->
     <select id="selectAdminContentPosts" resultMap="adminContentPostMap">
         select
@@ -282,12 +273,63 @@
             c.member_id,
             m.name as author_name,
             m.nickname as author_nickname,
-            c.parent_id
+            c.parent_id,
+            case
+                when c.deleted_yn = 'Y' then 'DELETED'
+                when latest_log.action_type = 'HIDE' then 'HIDDEN'
+                else 'PUBLIC'
+            end as moderation_status
         from comment_tbl c
         left join post_tbl p on p.post_id = c.post_id
         left join members m on m.member_id = c.member_id
+        left join (
+            select log.target_id, log.action_type
+            from admin_action_logs log
+            inner join (
+                select target_id, max(log_id) as latest_log_id
+                from admin_action_logs
+                where target_type = 'COMMENT'
+                  and action_type in ('HIDE', 'RESTORE')
+                group by target_id
+            ) latest on latest.latest_log_id = log.log_id
+        ) latest_log on latest_log.target_id = c.comment_id
         order by c.created_at desc
         limit 500
+    </select>
+
+    <select id="selectAdminContentCommentById" resultMap="adminContentCommentMap">
+        select
+            c.comment_id,
+            c.post_id,
+            coalesce(p.title, '제목 없음') as post_title,
+            c.content,
+            c.deleted_yn,
+            date_format(c.created_at, '%Y-%m-%d %H:%i') as created_at,
+            c.member_id,
+            m.name as author_name,
+            m.nickname as author_nickname,
+            c.parent_id,
+            case
+                when c.deleted_yn = 'Y' then 'DELETED'
+                when latest_log.action_type = 'HIDE' then 'HIDDEN'
+                else 'PUBLIC'
+            end as moderation_status
+        from comment_tbl c
+        left join post_tbl p on p.post_id = c.post_id
+        left join members m on m.member_id = c.member_id
+        left join (
+            select log.target_id, log.action_type
+            from admin_action_logs log
+            inner join (
+                select target_id, max(log_id) as latest_log_id
+                from admin_action_logs
+                where target_type = 'COMMENT'
+                  and action_type in ('HIDE', 'RESTORE')
+                group by target_id
+            ) latest on latest.latest_log_id = log.log_id
+        ) latest_log on latest_log.target_id = c.comment_id
+        where c.comment_id = #{commentId}
+        limit 1
     </select>
 
     <!-- 콘텐츠 관리 해시태그 탭: 태그별 사용량과 최근 연결 게시글 시간을 조회합니다. -->
@@ -297,13 +339,60 @@
             h.hashtag,
             coalesce(h.use_count, 0) as use_count,
             count(ph.post_hashtag_id) as post_count,
-            date_format(max(p.created_at), '%Y-%m-%d %H:%i') as latest_post_created_at
+            date_format(max(p.created_at), '%Y-%m-%d %H:%i') as latest_post_created_at,
+            case
+                when latest_log.action_type = 'DELETE' then 'DELETED'
+                when latest_log.action_type = 'HIDE' then 'HIDDEN'
+                else 'PUBLIC'
+            end as moderation_status
         from hashtag h
         left join post_hashtag ph on ph.hashtag_id = h.hashtag_id
         left join post_tbl p on p.post_id = ph.post_id
-        group by h.hashtag_id, h.hashtag, h.use_count
+        left join (
+            select log.target_id, log.action_type
+            from admin_action_logs log
+            inner join (
+                select target_id, max(log_id) as latest_log_id
+                from admin_action_logs
+                where target_type = 'HASHTAG'
+                  and action_type in ('HIDE', 'DELETE', 'RESTORE')
+                group by target_id
+            ) latest on latest.latest_log_id = log.log_id
+        ) latest_log on latest_log.target_id = h.hashtag_id
+        group by h.hashtag_id, h.hashtag, h.use_count, latest_log.action_type
         order by post_count desc, h.hashtag asc
         limit 500
+    </select>
+
+    <select id="selectAdminContentHashtagById" resultMap="adminContentHashtagMap">
+        select
+            h.hashtag_id,
+            h.hashtag,
+            coalesce(h.use_count, 0) as use_count,
+            count(ph.post_hashtag_id) as post_count,
+            date_format(max(p.created_at), '%Y-%m-%d %H:%i') as latest_post_created_at,
+            case
+                when latest_log.action_type = 'DELETE' then 'DELETED'
+                when latest_log.action_type = 'HIDE' then 'HIDDEN'
+                else 'PUBLIC'
+            end as moderation_status
+        from hashtag h
+        left join post_hashtag ph on ph.hashtag_id = h.hashtag_id
+        left join post_tbl p on p.post_id = ph.post_id
+        left join (
+            select log.target_id, log.action_type
+            from admin_action_logs log
+            inner join (
+                select target_id, max(log_id) as latest_log_id
+                from admin_action_logs
+                where target_type = 'HASHTAG'
+                  and action_type in ('HIDE', 'DELETE', 'RESTORE')
+                group by target_id
+            ) latest on latest.latest_log_id = log.log_id
+        ) latest_log on latest_log.target_id = h.hashtag_id
+        where h.hashtag_id = #{hashtagId}
+        group by h.hashtag_id, h.hashtag, h.use_count, latest_log.action_type
+        limit 1
     </select>
 
     <select id="selectAdminContentPostById" resultMap="adminContentPostMap">
@@ -335,7 +424,10 @@
         limit 1
     </select>
 
-    <!-- 寃뚯떆湲 ?④?: ??젣?섏? ?딆? 寃뚯떆湲留?PRIVATE ?곹깭濡?諛붽퓠?덈떎. -->
+    <!--
+      hideAdminContentPost 荑쇰━?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
+    -->
     <update id="hideAdminContentPost">
         update post_tbl
         set visibility = 'PRIVATE',
@@ -344,7 +436,10 @@
           and deleted_yn = 'N'
     </update>
 
-    <!-- ?④? 蹂듦뎄: ??젣?섏? ?딆? 寃뚯떆湲留?PUBLIC ?곹깭濡??섎룎由쎈땲?? -->
+    <!--
+      restoreHiddenAdminContentPost 荑쇰━?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
+    -->
     <update id="restoreHiddenAdminContentPost">
         update post_tbl
         set visibility = 'PUBLIC',
@@ -353,7 +448,10 @@
           and deleted_yn = 'N'
     </update>
 
-    <!-- 寃뚯떆湲 ??젣: 泥???젣???꾩쟾 ??젣媛 ?꾨땲??deleted_yn留?Y濡?諛붽퓠?덈떎. -->
+    <!--
+      softDeleteAdminContentPost 荑쇰━?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
+    -->
     <update id="softDeleteAdminContentPost">
         update post_tbl
         set deleted_yn = 'Y',
@@ -362,7 +460,10 @@
           and deleted_yn = 'N'
     </update>
 
-    <!-- ??젣 寃뚯떆湲 蹂듦뎄: deleted_yn??N?쇰줈 ?섎룎由ш퀬 怨듦컻 ?곹깭瑜?PUBLIC?쇰줈 留욎땅?덈떎. -->
+    <!--
+      restoreDeletedAdminContentPost 荑쇰━?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
+    -->
     <update id="restoreDeletedAdminContentPost">
         update post_tbl
         set deleted_yn = 'N',
@@ -372,7 +473,10 @@
           and deleted_yn = 'Y'
     </update>
 
-    <!-- ?꾩쟾 ??젣 ???곌껐 ?곗씠???뺣━: FK ?쒖빟???쇳븯湲??꾪빐 ?먯떇 ?곗씠?곕? 癒쇱? ??젣?⑸땲?? -->
+    <!--
+      deleteAdminPostComments 荑쇰━?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
+    -->
     <delete id="deleteAdminPostComments">
         delete from comment_tbl
         where post_id = #{postId}
@@ -393,12 +497,35 @@
         where post_id = #{postId}
     </delete>
 
-    <!-- ?꾩쟾 ??젣: ??젣 ??뿉 ?ㅼ뼱媛?寃뚯떆湲留??ㅼ젣濡?post_tbl?먯꽌 ?쒓굅?⑸땲?? -->
+    <!--
+      hardDeleteAdminContentPost 荑쇰━?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
+    -->
     <delete id="hardDeleteAdminContentPost">
         delete from post_tbl
         where post_id = #{postId}
           and deleted_yn = 'Y'
     </delete>
+
+    <update id="softDeleteAdminContentComment">
+        update comment_tbl
+        set deleted_yn = 'Y'
+        where comment_id = #{commentId}
+          and deleted_yn = 'N'
+    </update>
+
+    <update id="restoreAdminContentComment">
+        update comment_tbl
+        set deleted_yn = 'N'
+        where comment_id = #{commentId}
+          and deleted_yn = 'Y'
+    </update>
+
+    <select id="countAdminContentHashtagById" resultType="int">
+        select count(*)
+        from hashtag
+        where hashtag_id = #{hashtagId}
+    </select>
 
     <select id="selectUserManagementSummaryCounts" resultMap="adminUserManagementSummaryMap">
         select
@@ -490,9 +617,8 @@
     </select>
 
     <!--
-      ?뚯썝 ?뺣낫 ?꾩껜 蹂닿린 ?④굔 議고쉶?낅땲??
-
-      媛쒖씤?뺣낫 愿???꾨뱶??蹂댁뿬二쇰릺 password_hash???덈? 議고쉶?섏? ?딆뒿?덈떎.
+      selectMemberDetail 荑쇰━?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
     -->
     <select id="selectMemberDetail" resultMap="adminMemberDetailMap">
         select
@@ -518,15 +644,8 @@
     </select>
 
     <!--
-      愿由ъ옄 沅뚰븳 愿由??섏씠吏???뚯썝 寃?됱엯?덈떎.
-
-      searchType 媛믪뿉 ?곕씪 寃?????而щ읆??諛붽퓠?덈떎.
-      - email: ?대찓??寃??
-      - name: ?ㅻ챸 寃??
-
-      limit 100?????댁쑀:
-      - 寃?됱뼱媛 鍮꾩뼱 ?덉쓣 ?뚮룄 ?꾩껜 沅뚰븳 愿由?????뚯썝??議고쉶?섎릺,
-        ??踰덉뿉 ?덈Т 留롮? ?뚯썝???붾㈃???섏삤吏 ?딅룄濡??쒗븳?⑸땲??
+      searchMembersForAdminPromotion 荑쇰━?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
     -->
     <select id="searchMembersForAdminPromotion" resultMap="adminMemberMap">
         select
@@ -567,11 +686,8 @@
     </select>
 
     <!--
-      愿由ъ옄 沅뚰븳 愿由??섏씠吏?먯꽌 ?좏깮???뚯썝??role??蹂寃쏀빀?덈떎.
-
-      議곌굔???꾧꺽?섍쾶 ???댁쑀:
-      - ACTIVE ?곹깭媛 ?꾨땶 ?뚯썝? 沅뚰븳 蹂寃???곸씠 ?꾨떃?덈떎.
-      - 吏?뺣맂 ?뚯썝/愿由ъ옄 role留?蹂寃???곸뿉 ?ы븿?⑸땲??
+      updateMemberRoleForAdminPromotion 荑쇰━?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
     -->
     <update id="updateMemberRoleForAdminPromotion">
         update members
@@ -583,12 +699,8 @@
     </update>
 
     <!--
-      ?뚯썝 ?뺤? 泥섎━?낅땲??
-
-      泥섎━ 湲곗?:
-      - suspended_until 媛믪씠 ?덉쑝硫?湲곌컙 ?뺤??낅땲??
-      - suspended_until 媛믪씠 null?대㈃ ?곴뎄 ?뺤??낅땲??
-      - suspension_count???꾩쟻 ?뺤? ?잛닔?쇱꽌 ?뺤????뚮쭏??1??利앷??쒗궢?덈떎.
+      suspendMember 荑쇰━?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
     -->
     <update id="suspendMember">
         update members
@@ -601,12 +713,8 @@
     </update>
 
     <!--
-      ?뚯썝 ?뺤? ?댁젣 泥섎━?낅땲??
-
-      ?뺤? ?댁젣 ??
-      - status??ACTIVE濡??섎룎由쎈땲??
-      - suspended_until? null濡?鍮꾩썙 ???댁긽 ?뺤? ?곹깭媛 ?꾨땲寃?留뚮벊?덈떎.
-      - suspension_count???꾩쟻 ?대젰?대?濡?以꾩씠嫄곕굹 珥덇린?뷀븯吏 ?딆뒿?덈떎.
+      restoreSuspendedMember 荑쇰━?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
     -->
     <update id="restoreSuspendedMember">
         update members
@@ -619,10 +727,8 @@
     </update>
 
     <!--
-      愿由ъ옄 ?묒뾽 濡쒓렇 異붽??낅땲??
-
-      admin_action_logs??append-only ?뺤콉?대?濡??뚯썝 ?뺤? ?묒뾽??諛쒖깮???뚮쭏??
-      ??濡쒓렇瑜???以?異붽??⑸땲??
+      insertAdminActionLog 荑쇰━?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
     -->
     <insert id="insertAdminActionLog">
         insert into admin_action_logs (
@@ -643,18 +749,8 @@
     </insert>
 
     <!--
-      愿由ъ옄 ??쒕낫???붿빟 議고쉶?낅땲??
-
-      total_member_count:
-      - members ?뚯씠釉??꾩껜 ?뚯썝 ?섏엯?덈떎.
-
-      today_new_member_count:
-      - ?ㅻ뒛 00:00:00遺???꾩옱源뚯? 媛?낇븳 ?뚯썝 ?섏엯?덈떎.
-      - created_at 湲곗??쇰줈 怨꾩궛?⑸땲??
-
-      post_count:
-      - ??젣?섏? ?딆? 寃뚯떆湲 ?섏엯?덈떎.
-      - 湲곗〈 寃??湲곕뒫?먯꽌 post_tbl.deleted_yn = 'N' 湲곗????ъ슜?섍퀬 ?덉뼱 ?숈씪?섍쾶 留욎톬?듬땲??
+      selectDashboardSummary 荑쇰━?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
     -->
     <select id="selectDashboardSummary" resultMap="adminDashboardSummaryMap">
         select
@@ -662,21 +758,16 @@
              from members) as total_member_count,
             (select count(*)
              from members
-             where created_at >= curdate()
-               and created_at &lt; date_add(curdate(), interval 1 day)) as today_new_member_count,
+             where created_at >= date(CONVERT_TZ(NOW(6), '+00:00', '+09:00'))
+               and created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day)) as today_new_member_count,
             (select count(*)
              from post_tbl
              where deleted_yn = 'N') as post_count
     </select>
 
     <!--
-      愿由ъ옄 ??쒕낫??媛먯젙蹂??쒕룞 遺꾪룷 議고쉶?낅땲??
-
-      珥덈낫???ㅻ챸:
-      - period媛 day硫??ㅻ뒛 ?묒꽦??寃뚯떆湲留?吏묎퀎?⑸땲??
-      - period媛 week硫??ㅻ뒛 ?ы븿 理쒓렐 7??寃뚯떆湲??吏묎퀎?⑸땲??
-      - period媛 month硫??ㅻ뒛 ?ы븿 理쒓렐 1媛쒖썡 寃뚯떆湲??吏묎퀎?⑸땲??
-      - deleted_yn = 'N' 議곌굔???먯뼱 ??젣 泥섎━??寃뚯떆湲? ?쒕룞 ?섏뿉???쒖쇅?⑸땲??
+      selectDashboardEmotionActivity 荑쇰━?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
     -->
     <select id="selectDashboardEmotionActivity" resultMap="adminEmotionActivityMap">
         select
@@ -687,22 +778,29 @@
           and p.emotion_id is not null
           and (
             (#{period} = 'day'
-             and p.created_at &gt;= curdate()
-             and p.created_at &lt; date_add(curdate(), interval 1 day))
+             and p.created_at &gt;= date(CONVERT_TZ(NOW(6), '+00:00', '+09:00'))
+             and p.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
             or
             (#{period} = 'week'
-             and p.created_at &gt;= date_sub(curdate(), interval 6 day)
-             and p.created_at &lt; date_add(curdate(), interval 1 day))
+             and p.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day)
+             and p.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
             or
             (#{period} = 'month'
-             and p.created_at &gt;= date_sub(curdate(), interval 1 month)
-             and p.created_at &lt; date_add(curdate(), interval 1 day))
+             and p.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 month)
+             and p.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
           )
         group by p.emotion_id
         order by p.emotion_id
     </select>
 
-    <!-- 愿由ъ옄 ??쒕낫???쒓컙蹂??쒖꽦 ?ъ슜????議고쉶?낅땲?? -->
+    <!--
+      관리자 대시보드 시간별 활성 사용자 조회입니다.
+
+      시간대 주의:
+      - members.last_login_at은 서울 시간으로 저장합니다.
+      - RDS 세션 시간대는 UTC라서 curdate()를 쓰면 서울 기준 00~09시 사이에 날짜 경계가 어긋납니다.
+      - 그래서 모든 기간 경계는 date(CONVERT_TZ(NOW(6), '+00:00', '+09:00'))로 계산합니다.
+    -->
     <select id="selectDashboardActiveUsers" resultMap="adminActiveUserStatMap">
         <choose>
             <when test="period == 'week'">
@@ -722,7 +820,7 @@
                 ),
                 day_hour_slots as (
                     select
-                        date_add(date_sub(curdate(), interval 6 day), interval d.day_index day) as slot_date,
+                        date_add(date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day), interval d.day_index day) as slot_date,
                         h.hour_index
                     from day_numbers d
                     cross join hour_numbers h
@@ -763,7 +861,7 @@
                 day_hour_slots as (
                     select
                         floor(d.day_index / 7) + 1 as week_index,
-                        date_add(date_sub(curdate(), interval 27 day), interval d.day_index day) as slot_date,
+                        date_add(date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 27 day), interval d.day_index day) as slot_date,
                         h.hour_index
                     from day_numbers d
                     cross join hour_numbers h
@@ -808,14 +906,21 @@
                     cast(count(distinct m.member_id) as decimal(10, 1)) as active_user_count
                 from hour_numbers h
                 left join members m
-                  on m.last_login_at &gt;= date_add(curdate(), interval h.hour_index hour)
-                 and m.last_login_at &lt; date_add(curdate(), interval (h.hour_index + 1) hour)
+                  on m.last_login_at &gt;= date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval h.hour_index hour)
+                 and m.last_login_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval (h.hour_index + 1) hour)
                 group by h.hour_index
                 order by h.hour_index
             </otherwise>
         </choose>
     </select>
-    <!-- 愿由ъ옄 ??쒕낫??理쒓렐 ?쒕룞 10媛?議고쉶?낅땲?? -->
+    <!--
+      관리자 대시보드 최근 활동 10개 조회입니다.
+
+      시간/문자열 주의:
+      - RDS 세션 시간대가 UTC이므로 날짜 경계 조건은 curdate() 대신 서울 기준 날짜식을 사용합니다.
+      - 이전에 한글 문자열이 깨지면서 SQL 따옴표가 닫히지 않아 최근 활동 조회가 실패했습니다.
+        화면 표시용 고정 문구는 깨짐 방지를 위해 ASCII 코드값을 CHAR(... USING utf8mb4)로 생성합니다.
+    -->
     <select id="selectRecentDashboardActivities" resultMap="adminRecentActivityMap">
         select *
         from (
@@ -828,7 +933,7 @@
                 null as admin_id,
                 null as admin_name,
                 null as admin_nickname,
-                '?뚯썝 媛?? as activity_detail,
+                CHAR(54924, 50896, 32, 44032, 51077 USING utf8mb4) as activity_detail,
                 m.created_at
             from members m
             where m.created_at is not null
@@ -844,7 +949,7 @@
                 null as admin_id,
                 null as admin_name,
                 null as admin_nickname,
-                '?뚯썝 ?덊눜' as activity_detail,
+                CHAR(54924, 50896, 32, 53448, 53748 USING utf8mb4) as activity_detail,
                 m.deleted_at as created_at
             from members m
             where m.deleted_at is not null
@@ -876,7 +981,7 @@
         limit 10
     </select>
 
-    <!-- 愿由ъ옄 ??쒕낫???꾩껜 ?쒕룞 蹂닿린 議고쉶?낅땲?? -->
+    <!-- 관리자 대시보드 전체 활동 조회입니다. 최근 활동과 같은 이유로 고정 한글 문구는 CHAR를 사용합니다. -->
     <select id="selectAllDashboardActivities" resultMap="adminRecentActivityMap">
         select *
         from (
@@ -889,7 +994,7 @@
                 null as admin_id,
                 null as admin_name,
                 null as admin_nickname,
-                '?뚯썝 媛?? as activity_detail,
+                CHAR(54924, 50896, 32, 44032, 51077 USING utf8mb4) as activity_detail,
                 m.created_at
             from members m
             where m.created_at is not null
@@ -905,7 +1010,7 @@
                 null as admin_id,
                 null as admin_name,
                 null as admin_nickname,
-                '?뚯썝 ?덊눜' as activity_detail,
+                CHAR(54924, 50896, 32, 53448, 53748 USING utf8mb4) as activity_detail,
                 m.deleted_at as created_at
             from members m
             where m.deleted_at is not null
@@ -954,48 +1059,48 @@
              where m.created_at is not null
                and (
                     (#{period} = 'day'
-                     and m.created_at &gt;= curdate()
-                     and m.created_at &lt; date_add(curdate(), interval 1 day))
+                     and m.created_at &gt;= date(CONVERT_TZ(NOW(6), '+00:00', '+09:00'))
+                     and m.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                     or
                     (#{period} = 'week'
-                     and m.created_at &gt;= date_sub(curdate(), interval 6 day)
-                     and m.created_at &lt; date_add(curdate(), interval 1 day))
+                     and m.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day)
+                     and m.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                     or
                     (#{period} = 'month'
-                     and m.created_at &gt;= date_sub(curdate(), interval 1 month)
-                     and m.created_at &lt; date_add(curdate(), interval 1 day))
+                     and m.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 month)
+                     and m.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                )) as new_member_count,
             (select count(distinct m.member_id)
              from members m
              where m.last_login_at is not null
                and (
                     (#{period} = 'day'
-                     and m.last_login_at &gt;= curdate()
-                     and m.last_login_at &lt; date_add(curdate(), interval 1 day))
+                     and m.last_login_at &gt;= date(CONVERT_TZ(NOW(6), '+00:00', '+09:00'))
+                     and m.last_login_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                     or
                     (#{period} = 'week'
-                     and m.last_login_at &gt;= date_sub(curdate(), interval 6 day)
-                     and m.last_login_at &lt; date_add(curdate(), interval 1 day))
+                     and m.last_login_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day)
+                     and m.last_login_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                     or
                     (#{period} = 'month'
-                     and m.last_login_at &gt;= date_sub(curdate(), interval 1 month)
-                     and m.last_login_at &lt; date_add(curdate(), interval 1 day))
+                     and m.last_login_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 month)
+                     and m.last_login_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                )) as active_user_count,
             (select count(*)
              from post_tbl p
              where p.deleted_yn = 'N'
                and (
                     (#{period} = 'day'
-                     and p.created_at &gt;= curdate()
-                     and p.created_at &lt; date_add(curdate(), interval 1 day))
+                     and p.created_at &gt;= date(CONVERT_TZ(NOW(6), '+00:00', '+09:00'))
+                     and p.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                     or
                     (#{period} = 'week'
-                     and p.created_at &gt;= date_sub(curdate(), interval 6 day)
-                     and p.created_at &lt; date_add(curdate(), interval 1 day))
+                     and p.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day)
+                     and p.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                     or
                     (#{period} = 'month'
-                     and p.created_at &gt;= date_sub(curdate(), interval 1 month)
-                     and p.created_at &lt; date_add(curdate(), interval 1 day))
+                     and p.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 month)
+                     and p.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                )) as post_count,
             (select count(*)
              from comment_tbl c
@@ -1004,16 +1109,16 @@
                and p.deleted_yn = 'N'
                and (
                     (#{period} = 'day'
-                     and c.created_at &gt;= curdate()
-                     and c.created_at &lt; date_add(curdate(), interval 1 day))
+                     and c.created_at &gt;= date(CONVERT_TZ(NOW(6), '+00:00', '+09:00'))
+                     and c.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                     or
                     (#{period} = 'week'
-                     and c.created_at &gt;= date_sub(curdate(), interval 6 day)
-                     and c.created_at &lt; date_add(curdate(), interval 1 day))
+                     and c.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day)
+                     and c.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                     or
                     (#{period} = 'month'
-                     and c.created_at &gt;= date_sub(curdate(), interval 1 month)
-                     and c.created_at &lt; date_add(curdate(), interval 1 day))
+                     and c.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 month)
+                     and c.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                )) as comment_count,
             (select count(*)
              from user_post_like l
@@ -1021,16 +1126,16 @@
              where p.deleted_yn = 'N'
                and (
                     (#{period} = 'day'
-                     and l.created_at &gt;= curdate()
-                     and l.created_at &lt; date_add(curdate(), interval 1 day))
+                     and l.created_at &gt;= date(CONVERT_TZ(NOW(6), '+00:00', '+09:00'))
+                     and l.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                     or
                     (#{period} = 'week'
-                     and l.created_at &gt;= date_sub(curdate(), interval 6 day)
-                     and l.created_at &lt; date_add(curdate(), interval 1 day))
+                     and l.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day)
+                     and l.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                     or
                     (#{period} = 'month'
-                     and l.created_at &gt;= date_sub(curdate(), interval 1 month)
-                     and l.created_at &lt; date_add(curdate(), interval 1 day))
+                     and l.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 month)
+                     and l.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                )) as empathy_count
     </select>
 
@@ -1046,12 +1151,12 @@
                     where day_index &lt; 6
                 )
                 select
-                    date_format(date_add(date_sub(curdate(), interval 6 day), interval d.day_index day), '%m/%d') as label,
+                    date_format(date_add(date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day), interval d.day_index day), '%m/%d') as label,
                     count(m.member_id) as value
                 from day_numbers d
                 left join members m
-                  on m.created_at &gt;= date_add(date_sub(curdate(), interval 6 day), interval d.day_index day)
-                 and m.created_at &lt; date_add(date_sub(curdate(), interval 6 day), interval (d.day_index + 1) day)
+                  on m.created_at &gt;= date_add(date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day), interval d.day_index day)
+                 and m.created_at &lt; date_add(date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day), interval (d.day_index + 1) day)
                 group by d.day_index
                 order by d.day_index
             </when>
@@ -1064,12 +1169,12 @@
                     where week_index &lt; 3
                 )
                 select
-                    concat(week_index + 1, '주차') as label,
+                    concat(week_index + 1, CHAR(51452, 52264 USING utf8mb4)) as label,
                     count(m.member_id) as value
                 from week_numbers
                 left join members m
-                  on m.created_at &gt;= date_add(date_sub(curdate(), interval 27 day), interval (week_index * 7) day)
-                 and m.created_at &lt; date_add(date_sub(curdate(), interval 27 day), interval ((week_index + 1) * 7) day)
+                  on m.created_at &gt;= date_add(date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 27 day), interval (week_index * 7) day)
+                 and m.created_at &lt; date_add(date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 27 day), interval ((week_index + 1) * 7) day)
                 group by week_index
                 order by week_index
             </when>
@@ -1086,8 +1191,8 @@
                     count(m.member_id) as value
                 from hour_numbers h
                 left join members m
-                  on m.created_at &gt;= date_add(curdate(), interval h.hour_index hour)
-                 and m.created_at &lt; date_add(curdate(), interval (h.hour_index + 1) hour)
+                  on m.created_at &gt;= date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval h.hour_index hour)
+                 and m.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval (h.hour_index + 1) hour)
                 group by h.hour_index
                 order by h.hour_index
             </otherwise>
@@ -1097,26 +1202,26 @@
     <!-- 통계 대시보드 콘텐츠 활동 막대 그래프 조회입니다. -->
     <select id="selectStatisticsContentActivity" resultMap="adminStatisticsTrendMap">
         select
-            '게시글' as label,
+            CHAR(44172, 49884, 44544 USING utf8mb4) as label,
             count(*) as value
         from post_tbl p
         where p.deleted_yn = 'N'
           and (
                (#{period} = 'day'
-                and p.created_at &gt;= curdate()
-                and p.created_at &lt; date_add(curdate(), interval 1 day))
+                and p.created_at &gt;= date(CONVERT_TZ(NOW(6), '+00:00', '+09:00'))
+                and p.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                or
                (#{period} = 'week'
-                and p.created_at &gt;= date_sub(curdate(), interval 6 day)
-                and p.created_at &lt; date_add(curdate(), interval 1 day))
+                and p.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day)
+                and p.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                or
                (#{period} = 'month'
-                and p.created_at &gt;= date_sub(curdate(), interval 1 month)
-                and p.created_at &lt; date_add(curdate(), interval 1 day))
+                and p.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 month)
+                and p.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
           )
         union all
         select
-            '댓글' as label,
+            CHAR(45843, 44544 USING utf8mb4) as label,
             count(*) as value
         from comment_tbl c
         join post_tbl p on p.post_id = c.post_id
@@ -1124,41 +1229,42 @@
           and p.deleted_yn = 'N'
           and (
                (#{period} = 'day'
-                and c.created_at &gt;= curdate()
-                and c.created_at &lt; date_add(curdate(), interval 1 day))
+                and c.created_at &gt;= date(CONVERT_TZ(NOW(6), '+00:00', '+09:00'))
+                and c.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                or
                (#{period} = 'week'
-                and c.created_at &gt;= date_sub(curdate(), interval 6 day)
-                and c.created_at &lt; date_add(curdate(), interval 1 day))
+                and c.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day)
+                and c.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                or
                (#{period} = 'month'
-                and c.created_at &gt;= date_sub(curdate(), interval 1 month)
-                and c.created_at &lt; date_add(curdate(), interval 1 day))
+                and c.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 month)
+                and c.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
           )
         union all
         select
-            '공감' as label,
+            CHAR(44277, 44048 USING utf8mb4) as label,
             count(*) as value
         from user_post_like l
         join post_tbl p on p.post_id = l.post_id
         where p.deleted_yn = 'N'
           and (
                (#{period} = 'day'
-                and l.created_at &gt;= curdate()
-                and l.created_at &lt; date_add(curdate(), interval 1 day))
+                and l.created_at &gt;= date(CONVERT_TZ(NOW(6), '+00:00', '+09:00'))
+                and l.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                or
                (#{period} = 'week'
-                and l.created_at &gt;= date_sub(curdate(), interval 6 day)
-                and l.created_at &lt; date_add(curdate(), interval 1 day))
+                and l.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day)
+                and l.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                or
                (#{period} = 'month'
-                and l.created_at &gt;= date_sub(curdate(), interval 1 month)
-                and l.created_at &lt; date_add(curdate(), interval 1 day))
+                and l.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 month)
+                and l.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
           )
     </select>
 
     <!--
-      濡쒓렇?명븳 愿由ъ옄 蹂몄씤??媛쒖씤 ?뺣낫瑜?議고쉶?⑸땲??
+      selectAdminProfile 荑쇰━?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
     -->
     <select id="selectAdminProfile" resultMap="adminProfileMap">
         select
@@ -1173,7 +1279,8 @@
     </select>
 
     <!--
-      濡쒓렇?명븳 愿由ъ옄 蹂몄씤???ㅻ챸, ?됰꽕?? ?꾪솕踰덊샇瑜??섏젙?⑸땲??
+      updateAdminProfile 荑쇰━?낅땲??
+      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
     -->
     <update id="updateAdminProfile">
         update members

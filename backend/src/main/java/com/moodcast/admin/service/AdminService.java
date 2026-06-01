@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Objects;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 /* ==========================================================================
  * 관리자 페이지 공통 서비스
@@ -51,6 +52,7 @@ import java.time.LocalDateTime;
 public class AdminService {
 
     private static final Logger log = LoggerFactory.getLogger(AdminService.class);
+    private static final ZoneId KOREA_ZONE = ZoneId.of("Asia/Seoul");
 
     @Autowired // 나중에 DB 조회가 필요할 때 사용할 DAO를 연결합니다.
     private AdminDao adminDao;
@@ -669,7 +671,12 @@ public class AdminService {
         if (request.getSuspendedUntil() != null && !request.getSuspendedUntil().trim().isEmpty()) {
             LocalDateTime customSuspendedUntil = LocalDate.parse(request.getSuspendedUntil().trim()).atTime(23, 59, 59);
 
-            if (!customSuspendedUntil.isAfter(LocalDateTime.now())) {
+            /*
+             * 시간대 주의:
+             * EC2/로컬 실행 환경의 기본 시간대가 UTC로 잡히면 LocalDateTime.now() 기준이 달라질 수 있습니다.
+             * 관리자 정지 만료일은 화면과 DB 통계가 모두 서울 시간을 기준으로 동작하므로 명시적으로 Asia/Seoul을 사용합니다.
+             */
+            if (!customSuspendedUntil.isAfter(LocalDateTime.now(KOREA_ZONE))) {
                 throw new IllegalArgumentException("정지 해제일은 현재보다 이후 날짜로 선택해주세요.");
             }
 
@@ -682,7 +689,7 @@ public class AdminService {
             throw new IllegalArgumentException("정지 기간을 선택해주세요.");
         }
 
-        return LocalDateTime.now().plusDays(suspendDays);
+        return LocalDateTime.now(KOREA_ZONE).plusDays(suspendDays);
     }
 
     private String buildSuspendActionDetail(String suspendType, LocalDateTime suspendedUntil) {
