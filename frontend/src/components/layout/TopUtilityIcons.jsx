@@ -9,6 +9,7 @@ import LoginOutlinedIcon from '@mui/icons-material/LoginOutlined';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useRealtimeNotifications } from '../../hooks/useRealtimeNotifications';
 import { defaultAvatarSrc } from '../../shared/lib/defaultAvatar';
+import { formatChatPreview } from '../../shared/lib/chatContent';
 import styles from './TopUtilityIcons.module.css';
 
 function TopUtilityIconsBase({ onSearch }) {
@@ -104,8 +105,12 @@ function TopUtilityIconsBase({ onSearch }) {
 
     if (item?.eventType === 'CHAT_NOTIFICATION') {
       const authorName = item?.senderNickname || '회원';
-      const preview = item?.content ? `: ${item.content}` : '';
-      return `${authorName}님이 보낸 새 메시지${preview}`;
+      const preview = formatChatPreview(item?.content);
+      if (!preview) {
+        return `${authorName}님이 보낸 새 메시지`;
+      }
+
+      return `${authorName}님이 보낸 새 메시지: ${preview}`;
     }
 
     return item?.content || '';
