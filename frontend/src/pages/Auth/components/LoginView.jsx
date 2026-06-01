@@ -9,7 +9,9 @@ export const LoginView = ({
   isLoading,
   inputMember,
   handleLogin,
+  handleKakaoLogin,
   showReadyMessage,
+  goRecovery,
   goSignup,
 }) => {
   return (
@@ -81,14 +83,14 @@ export const LoginView = ({
             <div className={styles.findLinks}>
               <button
                 type="button"
-                onClick={() => showReadyMessage("아이디 찾기")}
+                onClick={() => goRecovery("email")}
               >
                 아이디 찾기
               </button>
               <i />
               <button
                 type="button"
-                onClick={() => showReadyMessage("비밀번호 찾기")}
+                onClick={() => goRecovery("password")}
               >
                 비밀번호 찾기
               </button>
@@ -112,7 +114,7 @@ export const LoginView = ({
           <button
             type="button"
             className={`${styles.socialButton} ${styles.kakao}`}
-            onClick={() => showReadyMessage("카카오 로그인")}
+            onClick={handleKakaoLogin}
           >
             <ChatBubbleRoundedIcon fontSize="small" />
             카카오로 로그인

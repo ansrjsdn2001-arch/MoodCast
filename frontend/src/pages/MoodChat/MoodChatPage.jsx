@@ -2,7 +2,10 @@
 import axios from "axios";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import KeyboardArrowLeftRoundedIcon from "@mui/icons-material/KeyboardArrowLeftRounded";
+import KeyboardArrowRightRoundedIcon from "@mui/icons-material/KeyboardArrowRightRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
@@ -15,12 +18,16 @@ import { notifyChatUnreadChanged } from "../../hooks/useUnreadChatCount";
 import { useIsDesktop } from "../../hooks/useViewportWidth";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { formatKoreanTime } from "../../shared/lib/dateTime";
+import { formatChatPreview, parseChatContent, serializeChatContent } from "../../shared/lib/chatContent";
 import { fetchChatInviteCandidates } from "../../shared/api/chatInviteApi";
 import { fetchGroupChatRooms } from "../../shared/api/groupChatApi";
 import {
   createGroupChatRoom,
   inviteGroupChatMembers,
 } from "../../shared/api/groupChatApi";
+import { uploadChatImages } from "../../shared/api/fileUploadApi";
+import { EmojiPicker } from "../../shared/ui/emoji-picker/EmojiPicker";
+import { RichTextContent } from "../../shared/ui/rich-text/RichTextContent";
 import { ChatRoomCreateModal } from "./components/ChatRoomCreateModal";
 import { GroupRoomOverlay } from "./components/GroupRoomOverlay";
 import styles from "./MoodChatPage.module.css";
@@ -29,6 +36,7 @@ const API_BASE = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
 const DEFAULT_CURRENT_USER_ID = null;
 function normalizeIncomingMessage(message, currentUserId, timeCache) {
   const senderId = Number(message?.senderId);
+  const parsedContent = parseChatContent(message?.content ?? "");
   const messageKey =
     message?.chatId ??
     message?.id ??
@@ -44,7 +52,9 @@ function normalizeIncomingMessage(message, currentUserId, timeCache) {
   return {
     id: messageKey,
     sender: senderId === currentUserId ? "me" : "them",
-    text: message?.content ?? message?.text ?? "",
+    text: parsedContent.text || message?.text || "",
+    imageUrls: parsedContent.imageUrls,
+    rawContent: message?.content ?? "",
     time: displayTime,
     senderId,
     receiverId: Number(message?.receiverId),
@@ -68,7 +78,16 @@ function normalizeGroupMessage(message) {
 }
 
 function getMemberDisplayName(member) {
-  return member?.nickname || member?.name || `회원 ${member?.memberId}`;
+  return (
+    member?.nickname ||
+    member?.name ||
+    member?.memberName ||
+    member?.displayName ||
+    member?.userName ||
+    member?.username ||
+    (member?.email ? String(member.email).split("@")[0] : "") ||
+    `회원 ${member?.memberId}`
+  );
 }
 
 function buildRoomName(selectedMembers) {
@@ -91,10 +110,31 @@ function buildDirectThread(memberItem) {
     roomId: null,
     threadKey: `direct-${memberItem?.memberId}`,
     partnerMemberId: memberItem?.memberId,
-    partnerName: memberItem?.name || "",
-    partnerNickname: memberItem?.nickname || memberItem?.name || "",
+    partnerName:
+      memberItem?.name ||
+      memberItem?.nickname ||
+      memberItem?.memberName ||
+      memberItem?.displayName ||
+      memberItem?.userName ||
+      memberItem?.username ||
+      "",
+    partnerNickname:
+      memberItem?.nickname ||
+      memberItem?.name ||
+      memberItem?.memberName ||
+      memberItem?.displayName ||
+      memberItem?.userName ||
+      memberItem?.username ||
+      "",
     partnerProfileImageUrl: memberItem?.profileImageUrl || "",
-    roomName: memberItem?.nickname || memberItem?.name || "",
+    roomName:
+      memberItem?.nickname ||
+      memberItem?.name ||
+      memberItem?.memberName ||
+      memberItem?.displayName ||
+      memberItem?.userName ||
+      memberItem?.username ||
+      "",
     roomDescription: "",
     lastMessage: "",
     lastMessageAt: "",
@@ -103,16 +143,45 @@ function buildDirectThread(memberItem) {
   };
 }
 
+function buildImageEntries(files) {
+  return files.map((file, index) => ({
+    id: `${file.name}-${file.lastModified}-${index}`,
+    file,
+    previewUrl: URL.createObjectURL(file),
+  }));
+}
+
 function normalizeDirectThread(thread) {
   return {
     roomType: "direct",
     roomId: null,
     threadKey: `direct-${thread?.partnerMemberId}`,
     partnerMemberId: thread?.partnerMemberId,
-    partnerName: thread?.partnerName || "",
-    partnerNickname: thread?.partnerNickname || "",
+    partnerName:
+      thread?.partnerName ||
+      thread?.partnerNickname ||
+      thread?.memberName ||
+      thread?.displayName ||
+      thread?.userName ||
+      thread?.username ||
+      "",
+    partnerNickname:
+      thread?.partnerNickname ||
+      thread?.partnerName ||
+      thread?.memberName ||
+      thread?.displayName ||
+      thread?.userName ||
+      thread?.username ||
+      "",
     partnerProfileImageUrl: thread?.partnerProfileImageUrl || "",
-    roomName: thread?.partnerNickname || thread?.partnerName || "",
+    roomName:
+      thread?.partnerNickname ||
+      thread?.partnerName ||
+      thread?.memberName ||
+      thread?.displayName ||
+      thread?.userName ||
+      thread?.username ||
+      "",
     roomDescription: "",
     lastMessage: thread?.lastMessage || "",
     lastMessageAt: thread?.lastMessageAt || "",
@@ -146,10 +215,222 @@ function getThreadSortValue(thread) {
   return Number.isNaN(parsedValue) ? 0 : parsedValue;
 }
 
+function DirectChatComposer({
+  activeThread,
+  currentMemberId,
+  isSending,
+  isUploadingImages,
+  onSubmitMessage,
+}) {
+  const messageInputRef = useRef(null);
+  const imageInputRef = useRef(null);
+  const selectedImagesRef = useRef([]);
+  const [messageValue, setMessageValue] = useState("");
+  const [selectedImages, setSelectedImages] = useState([]);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    selectedImagesRef.current = selectedImages;
+  }, [selectedImages]);
+
+  useEffect(() => {
+    return () => {
+      selectedImagesRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+    };
+  }, []);
+
+  const clearSelectedImages = () => {
+    setSelectedImages((previousImages) => {
+      previousImages.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+      return [];
+    });
+
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
+  };
+
+  const removeSelectedImage = (imageId) => {
+    setSelectedImages((previousImages) => {
+      const nextImages = previousImages.filter((item) => item.id !== imageId);
+      const removedImage = previousImages.find((item) => item.id === imageId);
+
+      if (removedImage) {
+        URL.revokeObjectURL(removedImage.previewUrl);
+      }
+
+      return nextImages;
+    });
+  };
+
+  const focusMessageInput = () => {
+    if (!messageInputRef.current) {
+      return;
+    }
+
+    try {
+      messageInputRef.current.focus({ preventScroll: true });
+    } catch (focusError) {
+      messageInputRef.current.focus();
+    }
+  };
+
+  const handleImageSelection = (event) => {
+    const files = Array.from(event.target.files || []);
+
+    if (files.length === 0) {
+      return;
+    }
+
+    setError("");
+    setSelectedImages((previousImages) => {
+      const remainingSlots = 5 - previousImages.length;
+      const nextFiles = files.slice(0, Math.max(remainingSlots, 0));
+
+      if (files.length > remainingSlots) {
+        setError("이미지는 최대 5장까지 첨부할 수 있습니다.");
+      }
+
+      return [...previousImages, ...buildImageEntries(nextFiles)];
+    });
+
+    event.target.value = "";
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    const trimmedMessage = messageValue.trim();
+
+    if (
+      (!trimmedMessage && selectedImages.length === 0) ||
+      !activeThread ||
+      !currentMemberId ||
+      isSending ||
+      isUploadingImages
+    ) {
+      return;
+    }
+
+    setError("");
+    const isSubmitted = await onSubmitMessage?.({
+      text: trimmedMessage,
+      files: selectedImages.map((item) => item.file),
+    });
+
+    if (isSubmitted) {
+      setMessageValue("");
+      clearSelectedImages();
+      setIsEmojiPickerOpen(false);
+    }
+
+    requestAnimationFrame(focusMessageInput);
+  };
+
+  const handleEmojiSelect = (emoji) => {
+    setMessageValue((previousMessage) => `${previousMessage}${emoji}`);
+    setIsEmojiPickerOpen(false);
+    requestAnimationFrame(focusMessageInput);
+  };
+
+  useEffect(() => {
+    requestAnimationFrame(focusMessageInput);
+  }, [activeThread?.threadKey]);
+
+  return (
+    <form className={styles.composer} onSubmit={handleSubmit}>
+      {selectedImages.length > 0 ? (
+        <div className={styles.composerPreview}>
+          <div className={styles.composerPreviewHead}>
+            <span>첨부 이미지 {selectedImages.length}/5</span>
+            <button type="button" onClick={clearSelectedImages}>
+              전체 삭제
+            </button>
+          </div>
+          <div
+            className={`${styles.composerPreviewGrid} ${
+              selectedImages.length === 1 ? styles.singleComposerPreviewGrid : ""
+            } ${
+              selectedImages.length >= 2 ? styles.compactComposerPreviewGrid : ""
+            }`}
+          >
+            {selectedImages.map((image) => (
+              <div key={image.id} className={styles.composerPreviewItem}>
+                <img src={image.previewUrl} alt={image.file.name} />
+                <button
+                  type="button"
+                  className={styles.composerPreviewRemoveButton}
+                  onClick={() => removeSelectedImage(image.id)}
+                  aria-label="첨부 이미지 삭제"
+                  title="첨부 이미지 삭제"
+                >
+                  <DeleteOutlineRoundedIcon />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {error ? <p className={styles.errorText}>{error}</p> : null}
+
+      <div className={styles.composerRow}>
+        <label className={styles.addButton} aria-label="이미지 추가" title="이미지 추가">
+          <AddRoundedIcon />
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageSelection}
+            disabled={!activeThread || isSending || isUploadingImages}
+          />
+        </label>
+        <div className={styles.inputShell}>
+          <input
+            ref={messageInputRef}
+            placeholder="메시지를 입력하세요..."
+            value={messageValue}
+            onChange={(event) => setMessageValue(event.target.value)}
+            disabled={!activeThread || isSending || isUploadingImages}
+          />
+          <button
+            type="button"
+            className={styles.emojiButton}
+            aria-label="이모지"
+            title="이모지"
+            disabled={!activeThread || isSending || isUploadingImages}
+            aria-expanded={isEmojiPickerOpen}
+            aria-haspopup="dialog"
+            onClick={() => setIsEmojiPickerOpen((value) => !value)}
+          >
+            <SentimentSatisfiedAltRoundedIcon />
+          </button>
+          <EmojiPicker
+            open={isEmojiPickerOpen}
+            onSelect={handleEmojiSelect}
+            onClose={() => setIsEmojiPickerOpen(false)}
+          />
+        </div>
+        <button
+          type="submit"
+          className={styles.sendButton}
+          aria-label="메시지 보내기"
+          title="메시지 보내기"
+          disabled={!activeThread || isSending || isUploadingImages}
+        >
+          <SendRoundedIcon />
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function ChatBody({ desktop, onRoomOpenChange }) {
   const { member, accessToken } = useAuthStore();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const currentMemberId = useMemo(() => {
     const memberId = Number(member?.memberId);
     return Number.isFinite(memberId) && memberId > 0
@@ -163,17 +444,23 @@ function ChatBody({ desktop, onRoomOpenChange }) {
   const initialPartnerName = searchParams.get("partnerName") || "";
   const messageListRef = useRef(null);
   const messageInputRef = useRef(null);
+  const imageInputRef = useRef(null);
   const directMessageTimeCacheRef = useRef(new Map());
+  const selectedImagesRef = useRef([]);
   const [threads, setThreads] = useState([]);
   const [activeThread, setActiveThread] = useState(null);
   const [isRoomOpen, setIsRoomOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
+  const [selectedImages, setSelectedImages] = useState([]);
   const [isLoadingThreads, setIsLoadingThreads] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [showScrollBottomButton, setShowScrollBottomButton] = useState(false);
   const [error, setError] = useState("");
+  const [imageViewer, setImageViewer] = useState(null);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [inviteMode, setInviteMode] = useState("create");
   const [inviteCandidates, setInviteCandidates] = useState([]);
@@ -181,6 +468,147 @@ function ChatBody({ desktop, onRoomOpenChange }) {
   const [isLoadingInviteCandidates, setIsLoadingInviteCandidates] = useState(false);
   const [activeGroupRoom, setActiveGroupRoom] = useState(null);
   const [isThreadMenuOpen, setIsThreadMenuOpen] = useState(false);
+
+  useEffect(() => {
+    selectedImagesRef.current = selectedImages;
+  }, [selectedImages]);
+
+  useEffect(() => {
+    return () => {
+      selectedImagesRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!imageViewer) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        closeImageViewer();
+        return;
+      }
+
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        moveImageViewer(-1);
+        return;
+      }
+
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        moveImageViewer(1);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [imageViewer]);
+
+  const clearSelectedImages = () => {
+    setSelectedImages((previousImages) => {
+      previousImages.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+      return [];
+    });
+
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
+  };
+
+  const handleImageSelection = (event) => {
+    const files = Array.from(event.target.files || []).filter((file) =>
+      file.type.startsWith("image/"),
+    );
+
+    event.target.value = "";
+
+    if (files.length === 0) {
+      return;
+    }
+
+    if (files.length > 5) {
+      setError("이미지는 최대 5개까지 업로드할 수 있습니다.");
+      return;
+    }
+
+    setError("");
+    setSelectedImages((previousImages) => {
+      previousImages.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+      return buildImageEntries(files);
+    });
+  };
+
+  const removeSelectedImage = (imageId) => {
+    setSelectedImages((previousImages) => {
+      const nextImages = previousImages.filter((item) => item.id !== imageId);
+      const removedImage = previousImages.find((item) => item.id === imageId);
+
+      if (removedImage) {
+        URL.revokeObjectURL(removedImage.previewUrl);
+      }
+
+      return nextImages;
+    });
+  };
+
+  const openImageViewer = (images, index, alt) => {
+    const normalizedImages = Array.isArray(images)
+      ? images.filter((imageUrl) => typeof imageUrl === "string" && imageUrl.trim().length > 0)
+      : [];
+
+    if (normalizedImages.length === 0) {
+      return;
+    }
+
+    const safeIndex = Math.min(Math.max(Number(index) || 0, 0), normalizedImages.length - 1);
+    setImageViewer({
+      images: normalizedImages,
+      index: safeIndex,
+      alt: alt || "이미지",
+      orientation: "horizontal",
+    });
+  };
+
+  const closeImageViewer = () => {
+    setImageViewer(null);
+  };
+
+  const handleViewerImageLoad = (event) => {
+    const { naturalWidth, naturalHeight } = event.currentTarget;
+    if (!naturalWidth || !naturalHeight) {
+      return;
+    }
+
+    setImageViewer((previousViewer) => {
+      if (!previousViewer) {
+        return previousViewer;
+      }
+
+      return {
+        ...previousViewer,
+        orientation: naturalHeight > naturalWidth ? "vertical" : "horizontal",
+      };
+    });
+  };
+
+  const moveImageViewer = (direction) => {
+    setImageViewer((previousViewer) => {
+      if (!previousViewer || !Array.isArray(previousViewer.images) || previousViewer.images.length === 0) {
+        return previousViewer;
+      }
+
+      const nextIndex =
+        (previousViewer.index + direction + previousViewer.images.length) %
+        previousViewer.images.length;
+
+      return {
+        ...previousViewer,
+        index: nextIndex,
+      };
+    });
+  };
 
   useEffect(() => {
     if (!accessToken || !currentMemberId) {
@@ -394,17 +822,55 @@ function ChatBody({ desktop, onRoomOpenChange }) {
         ? groupResponse.data.map(normalizeGroupThread)
         : [];
 
-      const nextThreads = [...directThreads, ...groupThreads].sort(
-        (leftThread, rightThread) => getThreadSortValue(rightThread) - getThreadSortValue(leftThread),
-      );
+      const nextThreads = [...directThreads, ...groupThreads];
 
-      setThreads(
-        nextThreads.map((thread) =>
-          activeGroupRoom?.roomId && Number(activeGroupRoom.roomId) === Number(thread.roomId)
-            ? { ...thread, unreadCount: 0 }
-            : thread,
-        ),
-      );
+      setThreads((previousThreads) => {
+        const previousByKey = new Map(
+          previousThreads.map((thread) => [thread.threadKey, thread]),
+        );
+        const nextByKey = new Map(
+          nextThreads.map((thread) => [thread.threadKey, thread]),
+        );
+
+        const mergedThreads = previousThreads
+          .map((previousThread) => {
+            const nextThread = nextByKey.get(previousThread.threadKey);
+            if (!nextThread) {
+              return previousThread;
+            }
+
+            const isActiveGroup =
+              activeGroupRoom?.roomId &&
+              Number(activeGroupRoom.roomId) === Number(nextThread.roomId);
+
+            return {
+              ...previousThread,
+              ...nextThread,
+              unreadCount: isActiveGroup ? 0 : nextThread.unreadCount,
+            };
+          })
+          .filter((thread) => nextByKey.has(thread.threadKey));
+
+        const appendedThreads = nextThreads.filter(
+          (thread) => !previousByKey.has(thread.threadKey),
+        );
+
+        const normalizedThreads = [...mergedThreads, ...appendedThreads].map((thread) => {
+          const isActiveGroup =
+            activeGroupRoom?.roomId && Number(activeGroupRoom.roomId) === Number(thread.roomId);
+
+          return isActiveGroup ? { ...thread, unreadCount: 0 } : thread;
+        });
+
+        if (previousThreads.length === 0) {
+          return normalizedThreads.sort(
+            (leftThread, rightThread) =>
+              getThreadSortValue(rightThread) - getThreadSortValue(leftThread),
+          );
+        }
+
+        return normalizedThreads;
+      });
     } catch (requestError) {
       console.error("채팅 리스트 조회 실패", requestError);
       setThreads([]);
@@ -459,6 +925,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
       setIsRoomOpen(false);
       setMessages([]);
       setMessage("");
+      clearSelectedImages();
       setError("");
       setShowScrollBottomButton(false);
       return;
@@ -481,10 +948,32 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     setActiveThread(partnerThread);
     setIsRoomOpen(true);
     setMessage("");
+    clearSelectedImages();
     setShowScrollBottomButton(false);
     loadMessages(partnerThread);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentMemberId, initialPartnerId, initialPartnerName]);
+
+  useEffect(() => {
+    if (searchParams.get("view") !== "list") {
+      return;
+    }
+
+    setActiveGroupRoom(null);
+    setActiveThread(null);
+    setIsRoomOpen(false);
+    setMessages([]);
+    setMessage("");
+    clearSelectedImages();
+    setShowScrollBottomButton(false);
+    setIsThreadMenuOpen(false);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("view");
+    nextParams.delete("ts");
+    setSearchParams(nextParams, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, setSearchParams]);
 
   const updateScrollBottomButton = () => {
     const messageListElement = messageListRef.current;
@@ -500,18 +989,27 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     setShowScrollBottomButton(bottomGap > 24);
   };
 
-  const scrollToMessageBottom = (behavior = "smooth") => {
+  const scrollToMessageBottom = () => {
     const messageListElement = messageListRef.current;
 
     if (!messageListElement) {
       return;
     }
 
-    messageListElement.scrollTo({
-      top: messageListElement.scrollHeight,
-      behavior,
-    });
+    messageListElement.scrollTop = messageListElement.scrollHeight;
     setShowScrollBottomButton(false);
+  };
+
+  const focusMessageInput = () => {
+    if (!messageInputRef.current) {
+      return;
+    }
+
+    try {
+      messageInputRef.current.focus({ preventScroll: true });
+    } catch (error) {
+      messageInputRef.current.focus();
+    }
   };
 
   useEffect(() => {
@@ -534,6 +1032,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     setActiveThread(thread);
     setIsRoomOpen(true);
     setMessage("");
+    clearSelectedImages();
     setShowScrollBottomButton(false);
     setIsThreadMenuOpen(false);
     loadMessages(thread);
@@ -555,6 +1054,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     setActiveThread(null);
     setMessages([]);
     setMessage("");
+    clearSelectedImages();
     setShowScrollBottomButton(false);
     setError("");
   };
@@ -587,9 +1087,11 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     setActiveThread(null);
     setMessages([]);
     setMessage("");
+    clearSelectedImages();
     setError("");
     setShowScrollBottomButton(false);
     setIsThreadMenuOpen(false);
+    setIsEmojiPickerOpen(false);
   };
 
   const handleOpenPartnerProfile = () => {
@@ -600,23 +1102,45 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     navigate(`/app/user/${activeThread.partnerMemberId}`);
   };
 
-  const handleSend = async () => {
-    const trimmedMessage = message.trim();
+  const handleSend = async (payload = {}) => {
+    const trimmedMessage =
+      typeof payload?.text === "string" ? payload.text.trim() : message.trim();
+    const selectedFiles = Array.isArray(payload?.files)
+      ? payload.files
+      : selectedImages.map((item) => item.file);
 
-    if (!trimmedMessage || !activeThread || !currentMemberId || isSending) {
+    if (
+      (!trimmedMessage && selectedFiles.length === 0) ||
+      !activeThread ||
+      !currentMemberId ||
+      isSending ||
+      isUploadingImages
+    ) {
       return;
     }
 
     setIsSending(true);
     setError("");
-    setMessage("");
-    requestAnimationFrame(() => {
-      messageInputRef.current?.focus();
-    });
 
     try {
+      let uploadedImageUrls = [];
+      if (selectedFiles.length > 0) {
+        setIsUploadingImages(true);
+        uploadedImageUrls = await uploadChatImages(selectedFiles);
+      }
+
+      const content = serializeChatContent({
+        text: trimmedMessage,
+        imageUrls: uploadedImageUrls,
+      });
+
+      if (!content) {
+        setError("메시지나 이미지를 입력해주세요.");
+        return;
+      }
+
       const isPublished = sendMessage({
-        content: trimmedMessage,
+        content,
         senderId: currentMemberId,
         receiverId: activeThread.partnerMemberId,
         isRead: 0,
@@ -624,7 +1148,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
 
       if (!isPublished) {
         await axios.post(`${API_BASE}/chat/send`, {
-          content: trimmedMessage,
+          content,
           senderId: currentMemberId,
           receiverId: activeThread.partnerMemberId,
           isRead: 0,
@@ -633,14 +1157,14 @@ function ChatBody({ desktop, onRoomOpenChange }) {
       }
 
       await loadThreads();
+      return true;
     } catch (requestError) {
       console.error("메시지 전송 실패", requestError);
       setError("메시지 전송에 실패했습니다.");
+      return false;
     } finally {
       setIsSending(false);
-      requestAnimationFrame(() => {
-        messageInputRef.current?.focus();
-      });
+      setIsUploadingImages(false);
     }
   };
 
@@ -649,12 +1173,28 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     await handleSend();
   };
 
+  const handleEmojiSelect = (emoji) => {
+    setMessage((previousMessage) => `${previousMessage}${emoji}`);
+    setIsEmojiPickerOpen(false);
+    requestAnimationFrame(focusMessageInput);
+  };
+
   useEffect(() => {
     onRoomOpenChange?.(isRoomOpen || Boolean(activeGroupRoom));
   }, [isRoomOpen, activeGroupRoom, onRoomOpenChange]);
   const partnerName =
     activeThread?.partnerNickname || activeThread?.partnerName || "상대방";
   const partnerInitial = partnerName.charAt(0).toUpperCase();
+  const directComposer = (
+    <DirectChatComposer
+      key={activeThread?.threadKey || "direct-composer"}
+      activeThread={activeThread}
+      currentMemberId={currentMemberId}
+      isSending={isSending}
+      isUploadingImages={isUploadingImages}
+      onSubmitMessage={handleSend}
+    />
+  );
 
   const threadList = (
     <div className={styles.threadList}>
@@ -691,7 +1231,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
                 {isGroupThread ? `그룹 · ${thread.memberCount || 0}명` : "1:1"}
               </span>
               <p className={styles.threadPreview}>
-                {thread.lastMessage || "메시지가 없습니다."}
+                {formatChatPreview(thread.lastMessage) || "메시지가 없습니다."}
               </p>
             </div>
             <div className={styles.threadMeta}>
@@ -759,7 +1299,37 @@ function ChatBody({ desktop, onRoomOpenChange }) {
                     <span className={styles.unreadMarker}>1</span>
                   ) : null}
                   <div className={styles.bubble}>
-                    <p>{item.text}</p>
+                    {item.text ? (
+                      <p>
+                        <RichTextContent content={item.text} className={styles.richTextContent} />
+                      </p>
+                    ) : null}
+                    {Array.isArray(item.imageUrls) && item.imageUrls.length > 0 ? (
+                      <div
+                        className={`${styles.messageMediaGrid} ${
+                          item.imageUrls.length === 1 ? styles.singleMessageMediaGrid : ""
+                        }`}
+                      >
+                        {item.imageUrls.map((imageUrl, index) => (
+                          <img
+                            key={`${imageUrl}-${index}`}
+                            className={styles.messageMediaImage}
+                            src={imageUrl}
+                            alt={`첨부 이미지 ${index + 1}`}
+                            loading="lazy"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => openImageViewer(item.imageUrls, index, `첨부 이미지 ${index + 1}`)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                openImageViewer(item.imageUrls, index, `첨부 이미지 ${index + 1}`);
+                              }
+                            }}
+                          />
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
                 <span className={styles.messageTime}>{item.time}</span>
@@ -771,43 +1341,88 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     </div>
   );
 
-  const composer = (
+  const composer = false && (
     <form className={styles.composer} onSubmit={handleSubmit}>
-      <label
-        className={styles.addButton}
-        aria-label="이미지 추가"
-        title="이미지 추가"
-      >
-        <AddRoundedIcon />
-        <input type="file" accept="image/*" />
-      </label>
-      <div className={styles.inputShell}>
-        <input
-          ref={messageInputRef}
-          placeholder="메시지를 입력하세요..."
-          value={message}
-          onChange={(event) => setMessage(event.target.value)}
-          disabled={!activeThread}
-        />
+      {selectedImages.length > 0 ? (
+        <div className={styles.composerPreview}>
+          <div className={styles.composerPreviewHead}>
+            <span>첨부 이미지 {selectedImages.length}/5</span>
+            <button type="button" onClick={clearSelectedImages}>
+              전체 삭제
+            </button>
+          </div>
+          <div
+            className={`${styles.composerPreviewGrid} ${
+              selectedImages.length === 1 ? styles.singleComposerPreviewGrid : ""
+            } ${
+              selectedImages.length >= 2 ? styles.compactComposerPreviewGrid : ""
+            }`}
+          >
+            {selectedImages.map((image) => (
+              <div key={image.id} className={styles.composerPreviewItem}>
+                <img src={image.previewUrl} alt={image.file.name} />
+                <button
+                  type="button"
+                  className={styles.composerPreviewRemoveButton}
+                  onClick={() => removeSelectedImage(image.id)}
+                  aria-label="첨부 이미지 삭제"
+                  title="첨부 이미지 삭제"
+                >
+                  <DeleteOutlineRoundedIcon />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      <div className={styles.composerRow}>
+        <label className={styles.addButton} aria-label="이미지 추가" title="이미지 추가">
+          <AddRoundedIcon />
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageSelection}
+            disabled={!activeThread || isSending || isUploadingImages}
+          />
+        </label>
+        <div className={styles.inputShell}>
+          <input
+            ref={messageInputRef}
+            placeholder="메시지를 입력하세요..."
+            value={message}
+            onChange={(event) => setMessage(event.target.value)}
+            disabled={!activeThread || isSending || isUploadingImages}
+          />
+          <button
+            type="button"
+            className={styles.emojiButton}
+            aria-label="이모지"
+            title="이모지"
+            disabled={!activeThread || isSending || isUploadingImages}
+            aria-expanded={isEmojiPickerOpen}
+            aria-haspopup="dialog"
+            onClick={() => setIsEmojiPickerOpen((value) => !value)}
+          >
+            <SentimentSatisfiedAltRoundedIcon />
+          </button>
+          <EmojiPicker
+            open={isEmojiPickerOpen}
+            onSelect={handleEmojiSelect}
+            onClose={() => setIsEmojiPickerOpen(false)}
+          />
+        </div>
         <button
-          type="button"
-          className={styles.emojiButton}
-          aria-label="이모지"
-          title="이모지"
-          disabled={!activeThread}
+          type="submit"
+          className={styles.sendButton}
+          aria-label="메시지 보내기"
+          title="메시지 보내기"
+          disabled={isSending || isUploadingImages || !activeThread}
         >
-          <SentimentSatisfiedAltRoundedIcon />
+          <SendRoundedIcon />
         </button>
       </div>
-      <button
-        type="submit"
-        className={styles.sendButton}
-        aria-label="메시지 보내기"
-        title="메시지 보내기"
-        disabled={isSending || !activeThread}
-      >
-        <SendRoundedIcon />
-      </button>
     </form>
   );
 
@@ -920,7 +1535,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
           <KeyboardArrowDownRoundedIcon />
         </button>
       ) : null}
-      {composer}
+      {directComposer}
     </div>
   );
 
@@ -968,6 +1583,76 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     </button>
   );
 
+  const imageViewerModal = imageViewer ? (
+    <div
+      className={styles.imageViewerOverlay}
+      role="presentation"
+      onClick={closeImageViewer}
+    >
+      {Array.isArray(imageViewer.images) && imageViewer.images.length > 1 ? (
+        <button
+          type="button"
+          className={`${styles.imageViewerNavButton} ${styles.imageViewerPrevButton}`}
+          aria-label="이전 이미지"
+          title="이전 이미지"
+          onClick={(event) => {
+            event.stopPropagation();
+            moveImageViewer(-1);
+          }}
+        >
+          <KeyboardArrowLeftRoundedIcon className={styles.imageViewerNavIcon} />
+        </button>
+      ) : null}
+      <div
+        className={`${styles.imageViewerContent} ${
+          imageViewer.orientation === "vertical"
+            ? styles.imageViewerVertical
+            : styles.imageViewerHorizontal
+        }`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={imageViewer.alt}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button
+          type="button"
+          className={styles.imageViewerClose}
+          aria-label="이미지 닫기"
+          title="이미지 닫기"
+          onClick={closeImageViewer}
+        >
+          <CloseRoundedIcon />
+        </button>
+        <span className={styles.imageViewerCounter}>
+          {Array.isArray(imageViewer.images) && imageViewer.images.length > 0
+            ? `${imageViewer.index + 1} / ${imageViewer.images.length}`
+            : ""}
+        </span>
+        <img
+          className={styles.imageViewerImage}
+          src={imageViewer.images?.[imageViewer.index]}
+          alt={imageViewer.alt}
+          onLoad={handleViewerImageLoad}
+          onClick={closeImageViewer}
+        />
+      </div>
+      {Array.isArray(imageViewer.images) && imageViewer.images.length > 1 ? (
+        <button
+          type="button"
+          className={`${styles.imageViewerNavButton} ${styles.imageViewerNextButton}`}
+          aria-label="다음 이미지"
+          title="다음 이미지"
+          onClick={(event) => {
+            event.stopPropagation();
+            moveImageViewer(1);
+          }}
+        >
+          <KeyboardArrowRightRoundedIcon className={styles.imageViewerNavIcon} />
+        </button>
+      ) : null}
+    </div>
+  ) : null;
+
   const showCreateRoomButton = !isRoomOpen && !activeGroupRoom;
 
   if (!desktop) {
@@ -990,6 +1675,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
           </section>
           {showCreateRoomButton ? createRoomButton : null}
         </div>
+        {imageViewerModal}
         {roomCreateModal}
       </>
     );
@@ -1018,6 +1704,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
         </section>
         {showCreateRoomButton ? createRoomButton : null}
       </div>
+      {imageViewerModal}
       {roomCreateModal}
     </>
   );

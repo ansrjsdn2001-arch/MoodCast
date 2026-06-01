@@ -8,11 +8,21 @@ import org.apache.ibatis.annotations.Param;
 public interface LoginDao {
     Member findMemberByEmail(@Param("email") String email);
 
+    Member findMemberByNameAndPhone(@Param("name") String name, @Param("phone") String phone);
+
+    Member findMemberByEmailAndPhone(@Param("email") String email, @Param("phone") String phone);
+
     String findPasswordHashByEmail(@Param("email") String email);
+
+    String findPasswordHashByMemberId(@Param("memberId") Long memberId);
 
     Member findMemberById(@Param("memberId") Long memberId);
 
     int updateLastLoginAt(@Param("memberId") Long memberId);
+
+    int updatePasswordHash(@Param("memberId") Long memberId, @Param("passwordHash") String passwordHash);
+
+    int withdrawMember(@Param("memberId") Long memberId);
 
     int updateMemberProfile(@Param("memberId") Long memberId,
                              @Param("nickname") String nickname,

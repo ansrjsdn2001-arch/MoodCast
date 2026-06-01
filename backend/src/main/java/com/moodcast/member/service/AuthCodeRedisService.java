@@ -18,6 +18,8 @@ public class AuthCodeRedisService {
     private static final Duration SEND_COUNT_TTL = Duration.ofDays(1);
     // 일일 최대 횟수
     private static final int DAILY_SEND_LIMIT = 10;
+    // 같은 IP에서 하루에 허용할 인증번호 발송 횟수
+    private static final int IP_DAILY_SEND_LIMIT = 30;
 
     private final StringRedisTemplate redisTemplate;
 
@@ -30,13 +32,17 @@ public class AuthCodeRedisService {
         return "auth:" + type + ":" + purpose + ":" + targetType + ":" + targetValue;
     }
 
+    private String ipSendKey(String purpose, String targetType, String ipAddress) {
+        return "auth:send:ip:" + purpose + ":" + targetType + ":" + ipAddress;
+    }
+
     // 재요청 쿨타임 체크
     public void checkCooldown(String purpose, String targetType, String targetValue) {
         // 키 남아 있는지 체크
         Boolean exists = redisTemplate.hasKey(key("cooldown", purpose, targetType, targetValue));
         // 키 있으면 쿨타임 남음
         if (Boolean.TRUE.equals(exists)) {
-            throw new IllegalArgumentException("인증번호 요청 60초 이후 재요청이 가능합니다.");
+            throw new IllegalArgumentException("인증번호는 60초에 한 번만 요청할 수 있습니다. 잠시 후 다시 시도해주세요.");
         }
     }
 
@@ -53,7 +59,21 @@ public class AuthCodeRedisService {
 
         // 일일 요청횟수 초과
         if (count != null && count > DAILY_SEND_LIMIT) {
-            throw new IllegalArgumentException("일일 인증번호 발송 횟수를 초과했습니다.");
+            throw new IllegalArgumentException("오늘 인증번호 요청 횟수를 초과했습니다. 내일 다시 시도해주세요.");
+        }
+    }
+
+    // 같은 IP에서 인증번호 발송을 과하게 반복하는 것을 막음
+    public void checkAndIncreaseIpSendCount(String purpose, String targetType, String ipAddress) {
+        String sendCountKey = ipSendKey(purpose, targetType, ipAddress);
+        Long count = redisTemplate.opsForValue().increment(sendCountKey);
+
+        if (count != null && count == 1) {
+            redisTemplate.expire(sendCountKey, SEND_COUNT_TTL);
+        }
+
+        if (count != null && count > IP_DAILY_SEND_LIMIT) {
+            throw new IllegalArgumentException("현재 네트워크에서 인증번호 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.");
         }
     }
 
