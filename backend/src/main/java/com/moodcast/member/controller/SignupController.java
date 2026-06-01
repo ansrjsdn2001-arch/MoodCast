@@ -92,7 +92,6 @@ public class SignupController {
     // 이메일 기본검사, 중복체크
     @GetMapping(value="check/email")
     public ResponseEntity<?> checkEmail(@RequestParam String email) {
-        System.out.println(email);
             boolean available = signupService.checkEmailAvailable(email);
             return ResponseEntity.ok(
                     Map.of(

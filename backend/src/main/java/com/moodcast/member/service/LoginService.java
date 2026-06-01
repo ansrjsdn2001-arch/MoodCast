@@ -19,7 +19,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.security.DigestException;
 import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -407,12 +406,8 @@ public class LoginService {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             try {
                 loginId = getMemberIdFromHeader(authHeader);
-                System.out.println("DEBUG: getFollowerList - loginId found: " + loginId);
-            } catch (Exception e) {
-                System.out.println("DEBUG: getFollowerList - invalid token: " + e.getMessage());
+            } catch (Exception ignored) {
             }
-        } else {
-            System.out.println("DEBUG: getFollowerList - NO AUTH HEADER RECEIVED");
         }
         return loginDao.getFollowerList(targetId, loginId);
     }
@@ -422,12 +417,8 @@ public class LoginService {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             try {
                 loginId = getMemberIdFromHeader(authHeader);
-                System.out.println("DEBUG: getFollowingList - loginId found: " + loginId);
-            } catch (Exception e) {
-                System.out.println("DEBUG: getFollowingList - invalid token: " + e.getMessage());
+            } catch (Exception ignored) {
             }
-        } else {
-            System.out.println("DEBUG: getFollowingList - NO AUTH HEADER RECEIVED");
         }
         return loginDao.getFollowingList(targetId, loginId);
     }
