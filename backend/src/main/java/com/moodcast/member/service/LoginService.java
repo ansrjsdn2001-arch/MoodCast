@@ -115,9 +115,6 @@ public class LoginService {
             throw new IllegalArgumentException("이메일 인증이 완료되지 않은 계정입니다.");
         }
 
-        if (!Integer.valueOf(1).equals(member.getPhoneVerified())) {
-            throw new IllegalArgumentException("휴대폰 인증이 완료되지 않은 계정입니다.");
-        }
     }
 
     private String getLoginMemberEmail(String authorizationHeader) {

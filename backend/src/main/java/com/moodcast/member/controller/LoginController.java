@@ -16,7 +16,6 @@ import com.moodcast.member.dto.recovery.PasswordResetCodeRequest;
 import com.moodcast.member.dto.recovery.PasswordResetRequest;
 import com.moodcast.member.dto.recovery.PasswordResetVerifyRequest;
 import com.moodcast.member.dto.signup.EmailAuthSendResult;
-import com.moodcast.member.dto.signup.PhoneAuthSendResult;
 import com.moodcast.member.dto.withdraw.WithdrawRequest;
 import com.moodcast.member.dto.follow.FollowResponse;
 import com.moodcast.member.dto.follow.FollowCheckResponse;
@@ -98,10 +97,6 @@ public class LoginController {
             return "EMAIL_NOT_VERIFIED";
         }
 
-        if (message.contains("휴대폰 인증")) {
-            return "PHONE_NOT_VERIFIED";
-        }
-
         if (message.contains("비밀번호")) {
             return "PASSWORD_MISMATCH";
         }
@@ -143,10 +138,6 @@ public class LoginController {
 
         if (message.contains("이메일 인증")) {
             return "EMAIL_NOT_VERIFIED";
-        }
-
-        if (message.contains("휴대폰 인증")) {
-            return "PHONE_NOT_VERIFIED";
         }
 
         if (auditMember != null && message.contains("로그인")) {
@@ -261,17 +252,17 @@ public class LoginController {
                 );
     }
 
-    @PostMapping("recovery/email/send-phone-code")
-    public ResponseEntity<?> sendFindEmailPhoneCode(
+    @PostMapping("recovery/email/send-code")
+    public ResponseEntity<?> sendFindEmailCode(
             @RequestBody FindEmailCodeRequest request,
             HttpServletRequest httpRequest
     ) {
-        PhoneAuthSendResult result = accountRecoveryService.sendFindEmailPhoneCode(request, getClientIp(httpRequest));
+        EmailAuthSendResult result = accountRecoveryService.sendFindEmailCode(request, getClientIp(httpRequest));
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", true);
-        response.put("message", "아이디 찾기 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
-        response.put("phone", result.getPhone());
+        response.put("message", "가입 이메일로 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
+        response.put("email", result.getEmail());
         if (devReturnAuthCode) {
             response.put("authCode", result.getAuthCode());
         }
@@ -288,22 +279,23 @@ public class LoginController {
                         "success", true,
                         "message", "가입 계정을 찾았습니다.",
                         "email", result.getEmail(),
-                        "kakaoLinked", result.isKakaoLinked()
+                        "kakaoLinked", result.isKakaoLinked(),
+                        "googleLinked", result.isGoogleLinked()
                 )
         );
     }
 
-    @PostMapping("recovery/password/send-phone-code")
-    public ResponseEntity<?> sendPasswordResetPhoneCode(
+    @PostMapping("recovery/password/send-code")
+    public ResponseEntity<?> sendPasswordResetCode(
             @RequestBody PasswordResetCodeRequest request,
             HttpServletRequest httpRequest
     ) {
-        PhoneAuthSendResult result = accountRecoveryService.sendPasswordResetPhoneCode(request, getClientIp(httpRequest));
+        EmailAuthSendResult result = accountRecoveryService.sendPasswordResetCode(request, getClientIp(httpRequest));
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", true);
-        response.put("message", "비밀번호 재설정 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
-        response.put("phone", result.getPhone());
+        response.put("message", "비밀번호 재설정 이메일 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
+        response.put("email", result.getEmail());
         if (devReturnAuthCode) {
             response.put("authCode", result.getAuthCode());
         }
@@ -318,7 +310,7 @@ public class LoginController {
         return ResponseEntity.ok(
                 Map.of(
                         "success", true,
-                        "message", "휴대폰 인증이 완료되었습니다. 새 비밀번호를 입력해주세요."
+                        "message", "이메일 인증이 완료되었습니다. 새 비밀번호를 입력해주세요."
                 )
         );
     }
