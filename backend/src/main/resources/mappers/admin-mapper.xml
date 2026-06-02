@@ -177,6 +177,19 @@
         <result property="createdAt" column="created_at"/>
     </resultMap>
 
+    <!-- 공지사항 결과 매핑입니다. notices_tbl 컬럼을 Notice VO 필드에 연결합니다. -->
+    <resultMap id="noticeMap" type="com.moodcast.admin.vo.Notice">
+        <id property="noticeId" column="notice_id"/>
+        <result property="title" column="title"/>
+        <result property="content" column="content"/>
+        <result property="noticeType" column="notice_type"/>
+        <result property="createdByAdminId" column="created_by_admin_id"/>
+        <result property="updatedByAdminId" column="updated_by_admin_id"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="deletedAt" column="deleted_at"/>
+    </resultMap>
+
     <!-- selectTotalMemberCount 조회 쿼리입니다. 관리자 화면에서 필요한 데이터를 조회합니다. -->
     <select id="selectTotalMemberCount" resultType="long">
         select count(*)
@@ -1201,5 +1214,106 @@
             updated_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
         where member_id = #{memberId}
     </update>
+
+    <select id="selectAdminNotices" resultMap="noticeMap">
+        select
+            notice_id,
+            title,
+            content,
+            notice_type,
+            created_by_admin_id,
+            updated_by_admin_id,
+            created_at,
+            updated_at,
+            deleted_at
+        from notices_tbl
+        <where>
+            <choose>
+                <when test="status == 'active'">
+                    deleted_at is null
+                </when>
+                <when test="status == 'deleted'">
+                    deleted_at is not null
+                </when>
+            </choose>
+        </where>
+        order by created_at desc, notice_id desc
+        limit 500
+    </select>
+
+    <select id="selectAdminNoticeById" resultMap="noticeMap">
+        select
+            notice_id,
+            title,
+            content,
+            notice_type,
+            created_by_admin_id,
+            updated_by_admin_id,
+            created_at,
+            updated_at,
+            deleted_at
+        from notices_tbl
+        where notice_id = #{noticeId}
+        limit 1
+    </select>
+
+    <select id="selectLatestActiveNotice" resultMap="noticeMap">
+        select
+            notice_id,
+            title,
+            content,
+            notice_type,
+            created_by_admin_id,
+            updated_by_admin_id,
+            created_at,
+            updated_at,
+            deleted_at
+        from notices_tbl
+        where deleted_at is null
+          and created_at >= date_sub(CONVERT_TZ(NOW(6), '+00:00', '+09:00'), interval 7 day)
+        order by created_at desc, notice_id desc
+        limit 1
+    </select>
+
+    <insert id="insertAdminNotice">
+        insert into notices_tbl (
+            title,
+            content,
+            notice_type,
+            created_by_admin_id,
+            updated_by_admin_id,
+            created_at,
+            updated_at
+        ) values (
+            #{title},
+            #{content},
+            #{noticeType},
+            #{adminId},
+            #{adminId},
+            CONVERT_TZ(NOW(6), '+00:00', '+09:00'),
+            CONVERT_TZ(NOW(6), '+00:00', '+09:00')
+        )
+    </insert>
+
+    <update id="updateAdminNotice">
+        update notices_tbl
+        set title = #{title},
+            content = #{content},
+            notice_type = #{noticeType},
+            updated_by_admin_id = #{adminId},
+            updated_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
+        where notice_id = #{noticeId}
+          and deleted_at is null
+    </update>
+
+    <update id="softDeleteAdminNotice">
+        update notices_tbl
+        set updated_by_admin_id = #{adminId},
+            updated_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00'),
+            deleted_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
+        where notice_id = #{noticeId}
+          and deleted_at is null
+    </update>
+
 </mapper>
 

@@ -1,59 +1,54 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { useAuthStore } from "../../../../stores/useAuthStore";
 import {
+  fetchLatestNotice,
   formatCategoryTag,
-  getLatestActiveNotice,
-  loadNotices,
   NOTICE_CATEGORY,
 } from "../noticeManagement/noticeStorage";
 import styles from "../../adminComponentsCss/dashboard/DashboardNoticeModal.module.css";
 
-const getTodayKey = () => {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-};
-
 const getDismissKey = (notice) =>
-  `moodcast_notice_dismiss_${notice.id}_${notice.version ?? 1}_${getTodayKey()}`;
+  `moodcast_notice_dismiss_${notice.id}_${notice.version ?? 1}`;
 
 export function DashboardNoticeModal() {
-  const [notices, setNotices] = useState([]);
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const [latestNotice, setLatestNotice] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [skipToday, setSkipToday] = useState(false);
+  const [skipNotice, setSkipNotice] = useState(false);
 
   useEffect(() => {
-    const syncNotices = () => {
-      setNotices(loadNotices());
-    };
-
-    syncNotices();
-    window.addEventListener("storage", syncNotices);
-    return () => window.removeEventListener("storage", syncNotices);
-  }, []);
-
-  const latestNotice = useMemo(() => getLatestActiveNotice(notices), [notices]);
-
-  useEffect(() => {
-    if (!latestNotice) {
+    if (!accessToken) {
+      setLatestNotice(null);
       setIsOpen(false);
       return;
     }
 
-    const dismissedToday = window.localStorage.getItem(
-      getDismissKey(latestNotice),
-    );
-    setIsOpen(!dismissedToday);
-    setSkipToday(false);
-  }, [latestNotice]);
+    fetchLatestNotice(accessToken)
+      .then((notice) => {
+        setLatestNotice(notice);
+
+        if (!notice) {
+          setIsOpen(false);
+          return;
+        }
+
+        const dismissed = window.localStorage.getItem(getDismissKey(notice));
+        setIsOpen(!dismissed);
+        setSkipNotice(false);
+      })
+      .catch((error) => {
+        console.error("[ADMIN_NOTICE_LATEST_ERROR]", error);
+        setLatestNotice(null);
+        setIsOpen(false);
+      });
+  }, [accessToken]);
 
   if (!latestNotice || !isOpen) {
     return null;
   }
 
   const handleClose = () => {
-    if (skipToday) {
+    if (skipNotice) {
       window.localStorage.setItem(getDismissKey(latestNotice), "true");
     }
     setIsOpen(false);
@@ -92,7 +87,9 @@ export function DashboardNoticeModal() {
           </span>
           <h3 id="dashboard-notice-title">{latestNotice.title}</h3>
           <div
-            className={styles.contentText}
+            className={`${styles.contentText} ${
+              latestNotice.alignCenter ? styles.contentTextCenter : ""
+            }`}
             dangerouslySetInnerHTML={{ __html: latestNotice.content }}
           />
         </div>
@@ -101,10 +98,10 @@ export function DashboardNoticeModal() {
           <label className={styles.checkLabel}>
             <input
               type="checkbox"
-              checked={skipToday}
-              onChange={(event) => setSkipToday(event.target.checked)}
+              checked={skipNotice}
+              onChange={(event) => setSkipNotice(event.target.checked)}
             />
-            오늘 하루 보지 않기
+            이 창을 보지 않기
           </label>
           <button
             type="button"
