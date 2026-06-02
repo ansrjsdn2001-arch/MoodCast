@@ -26,6 +26,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +44,9 @@ public class OAuthService {
 
     @Value("${oauth.kakao.client-secret:}")
     private String kakaoClientSecret;
+
+    @Value("${oauth.kakao.allowed-redirect-uris:}")
+    private String kakaoAllowedRedirectUris;
 
     private final OAuthDao oAuthDao;
     private final LoginDao loginDao;
@@ -243,6 +247,8 @@ public class OAuthService {
             throw new IllegalArgumentException("카카오 로그인 요청 정보가 올바르지 않습니다. 다시 시도해주세요.");
         }
 
+        validateKakaoRedirectUri(request.getRedirectUri());
+
         if (kakaoClientId == null || kakaoClientId.trim().isEmpty()) {
             throw new IllegalStateException("카카오 로그인 설정이 완료되지 않았습니다. 관리자에게 문의해주세요.");
         }
@@ -259,6 +265,18 @@ public class OAuthService {
         socialUserInfo.setEmail(memberValidationService.normalizeEmail(socialUserInfo.getEmail()));
 
         return socialUserInfo;
+    }
+
+    private void validateKakaoRedirectUri(String redirectUri) {
+        String normalizedRedirectUri = redirectUri.trim();
+        boolean allowed = Arrays.stream(kakaoAllowedRedirectUris.split(","))
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .anyMatch(normalizedRedirectUri::equals);
+
+        if (!allowed) {
+            throw new IllegalArgumentException("허용되지 않은 카카오 Redirect URI입니다. 관리자에게 문의해주세요.");
+        }
     }
 
     private String requestKakaoAccessToken(String code, String redirectUri) {

@@ -1,5 +1,6 @@
 package com.moodcast.member.service;
 
+import com.moodcast.common.exception.AuthException;
 import com.moodcast.member.dao.LoginDao;
 import com.moodcast.member.dao.PasswordHistoryDao;
 import com.moodcast.member.dto.follow.FollowCheckResponse;
@@ -182,14 +183,14 @@ public class LoginService {
 
     public LoginMemberResponse getLoginMember(String accessToken) {
         if (accessToken == null || accessToken.trim().isEmpty()) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
+            throw new AuthException("로그인이 필요합니다.");
         }
 
         Long memberId = jwtService.getMemberIdFromAccessToken(accessToken);
         Member member = loginDao.findMemberById(memberId);
 
         if (member == null) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
+            throw new AuthException("로그인이 필요합니다.");
         }
 
         checkLoginAllowed(member);
@@ -212,7 +213,7 @@ public class LoginService {
         Member member = loginDao.findMemberById(memberId);
 
         if (member == null) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
+            throw new AuthException("로그인이 필요합니다.");
         }
 
         checkLoginAllowed(member);
@@ -263,7 +264,7 @@ public class LoginService {
         Member member = loginDao.findMemberById(memberId);
 
         if (member == null) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
+            throw new AuthException("로그인이 필요합니다.");
         }
 
         checkLoginAllowed(member);
@@ -314,45 +315,43 @@ public class LoginService {
             return jwtService.getMemberIdFromAccessToken(accessToken);
         } catch (JwtException | IllegalArgumentException e) {
             return null;
+        } catch (AuthException e) {
+            return null;
         }
     }
 
     @Transactional
     public LoginMemberResponse updateProfile(String authorizationHeader, UpdateProfileRequest request) {
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
+            throw new AuthException("로그인이 필요합니다.");
         }
 
         String accessToken = authorizationHeader.substring(7).trim();
         if (accessToken.isEmpty()) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
+            throw new AuthException("로그인이 필요합니다.");
         }
 
         if (request == null || request.getNickname() == null || request.getNickname().trim().isEmpty()) {
             throw new IllegalArgumentException("닉네임을 입력해주세요.");
         }
 
-        try {
-            Long memberId = jwtService.getMemberIdFromAccessToken(accessToken);
-            Member member = loginDao.findMemberById(memberId);
+        Long memberId = jwtService.getMemberIdFromAccessToken(accessToken);
+        Member member = loginDao.findMemberById(memberId);
 
-            if (member == null) {
-                throw new IllegalArgumentException("로그인 정보를 찾을 수 없습니다.");
-            }
-
-            checkLoginAllowed(member);
-
-            loginDao.updateMemberProfile(memberId, request.getNickname().trim(), request.getBio(), request.getProfileImageUrl());
-
-            Member updated = loginDao.findMemberById(memberId);
-            if (updated == null) {
-                throw new IllegalStateException("프로필 정보를 불러올 수 없습니다.");
-            }
-
-            return toLoginMemberResponse(updated);
-        } catch (JwtException | IllegalArgumentException e) {
-            throw new IllegalArgumentException("로그인이 만료되었습니다. 다시 로그인해주세요.");
+        if (member == null) {
+            throw new AuthException("로그인이 필요합니다.");
         }
+
+        checkLoginAllowed(member);
+
+        loginDao.updateMemberProfile(memberId, request.getNickname().trim(), request.getBio(), request.getProfileImageUrl());
+
+        Member updated = loginDao.findMemberById(memberId);
+        if (updated == null) {
+            throw new IllegalStateException("프로필 정보를 불러올 수 없습니다.");
+        }
+
+        return toLoginMemberResponse(updated);
     }
 
     @Transactional
@@ -445,13 +444,13 @@ public class LoginService {
 
     private String extractAccessToken(String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
+            throw new AuthException("로그인이 필요합니다.");
         }
 
         String token = authHeader.substring(7).trim();
 
         if (token.isEmpty()) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
+            throw new AuthException("로그인이 필요합니다.");
         }
         return token;
     }
@@ -465,13 +464,13 @@ public class LoginService {
 
         // redis의 최신 refreshToken과 일치하는지 체크
         if (!refreshTokenRedisService.matchesRefreshToken(memberId, tokenId, refreshToken)) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
+            throw new AuthException("로그인이 필요합니다.");
         }
 
         // 회원있는지 체크
         Member member = loginDao.findMemberById(memberId);
         if (member == null) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
+            throw new AuthException("로그인이 필요합니다.");
         }
 
         // 로그인 가능여부 서비스 정책 체크

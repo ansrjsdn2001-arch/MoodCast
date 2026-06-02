@@ -7,6 +7,7 @@ import com.moodcast.member.dto.signup.SignupTermsAgreementRequest;
 import com.moodcast.member.vo.Member;
 import com.moodcast.member.vo.Terms;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,9 @@ public class SignupService {
 
     @Autowired
     private AuthCodeRedisService authCodeRedisService;
+
+    @Value("${app.dev-return-auth-code:false}")
+    private boolean devReturnAuthCode;
 
     // 이메일 정규식
     private static final Pattern EMAIL_PATTERN =
@@ -289,7 +293,9 @@ public class SignupService {
         authCodeRedisService.saveAuthCode("SIGNUP", "PHONE", phone, hashCode);
 
         // phoneService.sendSignupAuthCode(phone, authCode); 포인트 없어서 일단 주석
-        System.out.println("휴대폰 인증번호: " + authCode);
+        if (devReturnAuthCode) {
+            System.out.println("휴대폰 인증번호: " + authCode);
+        }
         return new PhoneAuthSendResult(phone, authCode);
     }
 

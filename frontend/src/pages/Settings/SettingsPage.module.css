@@ -44,3 +44,99 @@
   color: #7c4dff;
   font-weight: 800;
 }
+
+.card button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.passwordForm {
+  display: grid;
+  gap: 12px;
+}
+
+.passwordForm label,
+.withdrawForm label {
+  display: grid;
+  gap: 7px;
+}
+
+.passwordForm span,
+.withdrawForm span {
+  color: #344054;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.passwordForm input,
+.withdrawForm input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 13px;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #111827;
+  font-size: 15px;
+  outline: none;
+}
+
+.passwordForm input:focus,
+.withdrawForm input:focus {
+  border-color: rgba(124, 77, 255, 0.55);
+  box-shadow: 0 0 0 4px rgba(124, 77, 255, 0.1);
+}
+
+.helperText {
+  margin: -2px 0 0;
+  color: #7b8191;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.withdrawForm {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(17, 24, 39, 0.08);
+}
+
+.dangerHeader {
+  display: grid;
+  gap: 4px;
+}
+
+.dangerHeader strong {
+  color: #b42318;
+  font-size: 15px;
+  font-weight: 1000;
+}
+
+.dangerHeader p {
+  margin: 0;
+  color: #7b8191;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.card .dangerButton {
+  background: rgba(217, 45, 32, 0.08);
+  color: #b42318;
+}
+
+@media (max-width: 640px) {
+  .hero,
+  .card {
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .card button,
+  .passwordForm input,
+  .withdrawForm input {
+    min-height: 46px;
+  }
+}

@@ -45,7 +45,21 @@ export const SocialExtraSignupPage = () => {
       return;
     }
 
-    const nextPending = JSON.parse(pendingText);
+    let nextPending;
+    try {
+      nextPending = JSON.parse(pendingText);
+    } catch (error) {
+      window.sessionStorage.removeItem(SOCIAL_SIGNUP_PENDING_KEY);
+      navigate("/auth/login", { replace: true });
+      return;
+    }
+
+    if (!nextPending?.pendingToken) {
+      window.sessionStorage.removeItem(SOCIAL_SIGNUP_PENDING_KEY);
+      navigate("/auth/login", { replace: true });
+      return;
+    }
+
     setPending(nextPending);
     setForm((prev) => ({
       ...prev,
@@ -96,9 +110,6 @@ export const SocialExtraSignupPage = () => {
       })
       .then((res) => {
         setPhoneAuth(1);
-        if (res.data.authCode) {
-          console.log("휴대폰 인증번호:", res.data.authCode);
-        }
         showToast("success", res.data?.message || "휴대폰 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
       })
       .catch((err) => {
@@ -190,10 +201,13 @@ export const SocialExtraSignupPage = () => {
         setSignupCompleteModalOpen(true);
       })
       .catch((err) => {
-        showToast(
-          "error",
-          getApiMessage(err, "소셜 회원가입 정보를 다시 확인해주세요."),
-        );
+        const message = getApiMessage(err, "소셜 회원가입 정보를 다시 확인해주세요.");
+        showToast("error", message);
+
+        if (message.includes("소셜 가입 시간이 만료")) {
+          window.sessionStorage.removeItem(SOCIAL_SIGNUP_PENDING_KEY);
+          setTimeout(() => navigate("/auth/login", { replace: true }), 1600);
+        }
       })
       .finally(() => {
         setSignupSubmitting(false);

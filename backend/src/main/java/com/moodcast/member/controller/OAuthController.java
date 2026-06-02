@@ -1,5 +1,6 @@
 package com.moodcast.member.controller;
 
+import com.moodcast.common.ClientIpResolver;
 import com.moodcast.member.dto.login.LoginResponse;
 import com.moodcast.member.dto.login.LoginResult;
 import com.moodcast.member.dto.oauth.KakaoLoginRequest;
@@ -31,21 +32,22 @@ public class OAuthController {
     private final OAuthService oAuthService;
     private final JwtService jwtService;
     private final LoginAuditService loginAuditService;
+    private final ClientIpResolver clientIpResolver;
 
-    public OAuthController(OAuthService oAuthService, JwtService jwtService, LoginAuditService loginAuditService) {
+    public OAuthController(
+            OAuthService oAuthService,
+            JwtService jwtService,
+            LoginAuditService loginAuditService,
+            ClientIpResolver clientIpResolver
+    ) {
         this.oAuthService = oAuthService;
         this.jwtService = jwtService;
         this.loginAuditService = loginAuditService;
+        this.clientIpResolver = clientIpResolver;
     }
 
     private String getClientIp(HttpServletRequest request) {
-        String forwardedFor = request.getHeader("X-Forwarded-For");
-
-        if (forwardedFor != null && !forwardedFor.isBlank()) {
-            return forwardedFor.split(",")[0].trim();
-        }
-
-        return request.getRemoteAddr();
+        return clientIpResolver.resolve(request);
     }
 
     private String getUserAgent(HttpServletRequest request) {

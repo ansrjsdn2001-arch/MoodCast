@@ -25,6 +25,16 @@ export const SocialCallbackPage = () => {
     setToast({ show: true, type, message, duration: getToastDuration(type) });
   };
 
+  const getKakaoLoginErrorMessage = (error) => {
+    const data = error?.response?.data;
+
+    if (data?.status === "EMAIL_CONFLICT" || error?.response?.status === 409) {
+      return "이미 일반 회원으로 가입된 이메일입니다. 일반 로그인 후 설정에서 카카오 계정을 연결해주세요.";
+    }
+
+    return getApiMessage(error, error.message || "카카오 로그인 설정을 확인해주세요.");
+  };
+
   useEffect(() => {
     if (calledRef.current) {
       return;
@@ -114,10 +124,7 @@ export const SocialCallbackPage = () => {
         throw new Error("카카오 로그인 응답이 올바르지 않습니다.");
       })
       .catch((err) => {
-        showToast(
-          "error",
-          getApiMessage(err, err.message || "카카오 로그인 설정을 확인해주세요."),
-        );
+        showToast("error", getKakaoLoginErrorMessage(err));
         setTimeout(() => navigate("/auth/login", { replace: true }), 1600);
       });
   }, [BACKSERVER, accessToken, navigate, searchParams, setAuthData]);

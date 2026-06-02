@@ -109,9 +109,6 @@ export const AccountRecoveryPage = () => {
         phone: findEmailForm.phone,
       })
       .then((res) => {
-        if (res.data.authCode) {
-          console.log("아이디 찾기 인증번호:", res.data.authCode);
-        }
         showToast("success", res.data.message || "아이디 찾기 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
       })
       .catch((err) => {
@@ -169,9 +166,6 @@ export const AccountRecoveryPage = () => {
         phone: passwordForm.phone,
       })
       .then((res) => {
-        if (res.data.authCode) {
-          console.log("비밀번호 재설정 인증번호:", res.data.authCode);
-        }
         showToast("success", res.data.message || "비밀번호 재설정 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
       })
       .catch((err) => {
