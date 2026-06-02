@@ -1,4 +1,4 @@
-﻿import CloseIcon from "@mui/icons-material/Close";
+﻿﻿import CloseIcon from "@mui/icons-material/Close";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
@@ -7,6 +7,7 @@ import SendOutlinedIcon from "@mui/icons-material/SendOutlined";
 import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import FlagIcon from "@mui/icons-material/Flag";
 import ReplyIcon from "@mui/icons-material/Reply";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -22,6 +23,7 @@ import {
   reconcileMentionsAfterTextChange,
 } from "../../shared/lib/mentionUtils";
 import { HashtagRow } from "./HashtagRow";
+import { ReportModal } from "./ReportModal";
 import styles from "./CommentModal.module.css";
 
 export function CommentModal({
@@ -44,6 +46,8 @@ export function CommentModal({
   const [editingId, setEditingId] = useState(null);
   const [editText, setEditText] = useState("");
   // 대댓글 관련 state
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportingComment, setReportingComment] = useState(null);
   const [replyingToId, setReplyingToId] = useState(null); // 어느 댓글에 답글을 쓰는지
   const [replyText, setReplyText] = useState("");
   const [commentMentionKeyword, setCommentMentionKeyword] = useState("");
@@ -447,6 +451,41 @@ export function CommentModal({
     }
   };
 
+  const handleReportComment = (commentToReport) => {
+    if (!accessToken) {
+      alert("로그인이 필요합니다.");
+      return;
+    }
+    setReportingComment(commentToReport);
+    setReportModalOpen(true);
+    setMenuOpenId(null);
+  };
+
+  const handleReportSubmit = async ({ reason }) => {
+    if (!accessToken || !reportingComment) {
+      alert("오류가 발생했습니다. 다시 시도해주세요.");
+      return;
+    }
+    try {
+      await axios.post(
+        `${BACKSERVER}/reports`,
+        { commentId: reportingComment.commentId, reason },
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+      setReportModalOpen(false);
+      alert("댓글 신고가 정상적으로 접수되었습니다.");
+    } catch (error) {
+      setReportModalOpen(false);
+      if (error.response?.status === 409) {
+        // 409 Conflict: 중복 신고
+        alert(error.response.data?.message || "이미 신고한 댓글입니다.");
+      } else {
+        console.error("신고 제출 실패:", error);
+        alert("신고 접수에 실패했습니다. 다시 시도해주세요.");
+      }
+    }
+  };
+
   const handleAuthorNavigation = (event, link) => {
     event.stopPropagation();
     if (link) {
@@ -523,41 +562,51 @@ export function CommentModal({
               <p>{item.time ?? item.createdAt}</p>
             </div>
           </div>
-          {isMyComment && (
-            <div
-              className={styles.commentMenuWrap}
-              ref={menuOpenId === id ? menuRef : null}
+          <div
+            className={styles.commentMenuWrap}
+            ref={menuOpenId === id ? menuRef : null}
+          >
+            <button
+              type="button"
+              className={styles.commentMenuBtn}
+              onClick={() => setMenuOpenId(menuOpenId === id ? null : id)}
             >
-              <button
-                type="button"
-                className={styles.commentMenuBtn}
-                onClick={() => setMenuOpenId(menuOpenId === id ? null : id)}
-              >
-                <MoreHorizIcon fontSize="small" />
-              </button>
-              {menuOpenId === id && (
-                <div className={styles.commentMenu}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingId(id);
-                      setEditText(item.content ?? item.text ?? "");
-                      setMenuOpenId(null);
-                    }}
-                  >
-                    <EditIcon fontSize="small" /> 수정
-                  </button>
+              <MoreHorizIcon fontSize="small" />
+            </button>
+            {menuOpenId === id && (
+              <div className={styles.commentMenu}>
+                {isMyComment ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingId(id);
+                        setEditText(item.content ?? item.text ?? "");
+                        setMenuOpenId(null);
+                      }}
+                    >
+                      <EditIcon fontSize="small" /> 수정
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.danger}
+                      onClick={() => handleDeleteComment(id)}
+                    >
+                      <DeleteOutlineIcon fontSize="small" /> 삭제
+                    </button>
+                  </>
+                ) : (
                   <button
                     type="button"
                     className={styles.danger}
-                    onClick={() => handleDeleteComment(id)}
+                    onClick={() => handleReportComment(item)}
                   >
-                    <DeleteOutlineIcon fontSize="small" /> 삭제
+                    <FlagIcon fontSize="small" /> 신고
                   </button>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
+          </div>
         </div>
         {editingId === id ? (
           <div className={styles.editArea}>
@@ -807,7 +856,10 @@ export function CommentModal({
         <div className={styles.body}>
           <section className={styles.postSection}>
             <p className={styles.postText}>
-              <RichTextContent content={post.text} className={styles.postTextContent} />
+              <RichTextContent
+                content={post.text}
+                className={styles.postTextContent}
+              />
             </p>
             {post.imageSrc ? (
               <div
@@ -978,6 +1030,13 @@ export function CommentModal({
           </div>
         </form>
       </section>
+      <ReportModal
+        open={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        onSubmit={handleReportSubmit}
+        targetId={reportingComment?.commentId}
+        targetType="comment"
+      />
     </div>,
     document.body,
   );

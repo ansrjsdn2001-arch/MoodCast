@@ -483,8 +483,14 @@ export function FeedCard({
       setReportModalOpen(false);
       alert("게시물 신고가 정상적으로 접수되었습니다.");
     } catch (error) {
-      console.error("신고 제출 실패:", error);
-      alert("신고 접수에 실패했습니다. 다시 시도해주세요.");
+      setReportModalOpen(false);
+      if (error.response?.status === 409) {
+        // 409 Conflict: 중복 신고
+        alert(error.response.data?.message || "이미 신고한 게시물입니다.");
+      } else {
+        console.error("신고 제출 실패:", error);
+        alert("신고 접수에 실패했습니다. 다시 시도해주세요.");
+      }
     }
   };
 

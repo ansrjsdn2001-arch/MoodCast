@@ -1,7 +1,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 300; /* 다른 모달(댓글 등) 위에 표시되도록 z-index 값을 높입니다. */
   display: grid;
   place-items: center;
   padding: 24px;

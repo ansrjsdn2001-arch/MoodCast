@@ -1,6 +1,7 @@
-﻿import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
+﻿﻿import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import FlagIcon from "@mui/icons-material/Flag";
 import ReplyIcon from "@mui/icons-material/Reply";
 import SendOutlinedIcon from "@mui/icons-material/SendOutlined";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -15,6 +16,7 @@ import {
   insertMentionIntoText,
   reconcileMentionsAfterTextChange,
 } from "../../shared/lib/mentionUtils";
+import { ReportModal } from "./ReportModal";
 import styles from "./PostDetailComments.module.css";
 
 function normalizeCommentAuthor(item, member) {
@@ -52,6 +54,8 @@ export function PostDetailComments({
   const [editingId, setEditingId] = useState(null);
   const [editText, setEditText] = useState("");
   const [replyingToId, setReplyingToId] = useState(null);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportingComment, setReportingComment] = useState(null);
   const [replyText, setReplyText] = useState("");
   const [commentMentionKeyword, setCommentMentionKeyword] = useState("");
   const [commentMentionCandidates, setCommentMentionCandidates] = useState([]);
@@ -457,6 +461,41 @@ export function PostDetailComments({
     }
   };
 
+  const handleReportComment = (commentToReport) => {
+    if (!accessToken) {
+      alert("로그인이 필요합니다.");
+      return;
+    }
+    setReportingComment(commentToReport);
+    setReportModalOpen(true);
+    setMenuOpenId(null);
+  };
+
+  const handleReportSubmit = async ({ reason }) => {
+    if (!accessToken || !reportingComment) {
+      alert("오류가 발생했습니다. 다시 시도해주세요.");
+      return;
+    }
+    try {
+      await axios.post(
+        `${BACKSERVER}/reports`,
+        { commentId: reportingComment.commentId, reason },
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+      setReportModalOpen(false);
+      alert("댓글 신고가 정상적으로 접수되었습니다.");
+    } catch (error) {
+      setReportModalOpen(false);
+      if (error.response?.status === 409) {
+        // 409 Conflict: 중복 신고
+        alert(error.response.data?.message || "이미 신고한 댓글입니다.");
+      } else {
+        console.error("신고 제출 실패:", error);
+        alert("신고 접수에 실패했습니다. 다시 시도해주세요.");
+      }
+    }
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (submittingRef.current) return;
@@ -533,43 +572,54 @@ export function PostDetailComments({
               <p>{item.time ?? item.createdAt}</p>
             </div>
           </div>
-          {isMyComment && (
-            <div
-              className={styles.commentMenuWrap}
-              ref={menuOpenId === id ? menuRef : null}
+          <div
+            className={styles.commentMenuWrap}
+            ref={menuOpenId === id ? menuRef : null}
+          >
+            <button
+              type="button"
+              className={styles.commentMenuBtn}
+              onClick={() => setMenuOpenId(menuOpenId === id ? null : id)}
             >
-              <button
-                type="button"
-                className={styles.commentMenuBtn}
-                onClick={() => setMenuOpenId(menuOpenId === id ? null : id)}
-              >
-                <MoreHorizIcon fontSize="small" />
-              </button>
-              {menuOpenId === id && (
-                <div className={styles.commentMenu}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingId(id);
-                      setEditText(item.content ?? item.text ?? "");
-                      setMenuOpenId(null);
-                    }}
-                  >
-                    <EditIcon fontSize="small" />
-                    수정
-                  </button>
+              <MoreHorizIcon fontSize="small" />
+            </button>
+            {menuOpenId === id && (
+              <div className={styles.commentMenu}>
+                {isMyComment ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingId(id);
+                        setEditText(item.content ?? item.text ?? "");
+                        setMenuOpenId(null);
+                      }}
+                    >
+                      <EditIcon fontSize="small" />
+                      수정
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.danger}
+                      onClick={() => handleDeleteComment(id)}
+                    >
+                      <DeleteOutlineIcon fontSize="small" />
+                      삭제
+                    </button>
+                  </>
+                ) : (
                   <button
                     type="button"
                     className={styles.danger}
-                    onClick={() => handleDeleteComment(id)}
+                    onClick={() => handleReportComment(item)}
                   >
-                    <DeleteOutlineIcon fontSize="small" />
-                    삭제
+                    <FlagIcon fontSize="small" />
+                    신고
                   </button>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
+          </div>
         </div>
         {editingId === id ? (
           <div className={styles.editArea}>
@@ -881,6 +931,13 @@ export function PostDetailComments({
           </button>
         </div>
       </form>
+      <ReportModal
+        open={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        onSubmit={handleReportSubmit}
+        targetId={reportingComment?.commentId}
+        targetType="comment"
+      />
     </section>
   );
 }
