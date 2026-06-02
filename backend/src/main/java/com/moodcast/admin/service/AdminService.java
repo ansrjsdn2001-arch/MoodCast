@@ -11,12 +11,14 @@ import com.moodcast.admin.vo.AdminEmotionActivity;
 import com.moodcast.admin.vo.AdminMember;
 import com.moodcast.admin.vo.AdminMemberDetail;
 import com.moodcast.admin.vo.AdminMemberSuspendRequest;
+import com.moodcast.admin.vo.AdminNoticeRequest;
 import com.moodcast.admin.vo.AdminProfile;
 import com.moodcast.admin.vo.AdminProfileUpdateRequest;
 import com.moodcast.admin.vo.AdminRecentActivity;
 import com.moodcast.admin.vo.AdminStatisticsSummary;
 import com.moodcast.admin.vo.AdminStatisticsTrend;
 import com.moodcast.admin.vo.AdminUserManagementSummary;
+import com.moodcast.admin.vo.Notice;
 import com.moodcast.member.dto.login.LoginMemberResponse;
 import com.moodcast.member.service.LoginService;
 import com.moodcast.member.service.RefreshTokenRedisService;
@@ -1086,6 +1088,153 @@ public class AdminService {
         }
 
         return "day";
+    }
+
+    public List<Notice> getAdminNotices(String authorizationHeader, String status) {
+        validateAdmin(authorizationHeader);
+
+        String normalizedStatus = normalizeNoticeStatus(status);
+        List<Notice> notices = adminDao.selectAdminNotices(normalizedStatus);
+
+        return notices == null ? Collections.emptyList() : notices;
+    }
+
+    public Notice getLatestActiveNotice(String authorizationHeader) {
+        validateAdmin(authorizationHeader);
+        return adminDao.selectLatestActiveNotice();
+    }
+
+    @Transactional
+    public Notice createAdminNotice(String authorizationHeader, AdminNoticeRequest request) {
+        LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
+        NoticeInput noticeInput = normalizeNoticeInput(request);
+
+        int inserted = adminDao.insertAdminNotice(
+                noticeInput.title(),
+                noticeInput.content(),
+                noticeInput.noticeType(),
+                loginMember.getMemberId()
+        );
+
+        if (inserted != 1) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "공지사항 작성에 실패했습니다.");
+        }
+
+        Notice createdNotice = adminDao.selectLatestActiveNotice();
+
+        if (createdNotice != null) {
+            adminDao.insertAdminActionLog(
+                    loginMember.getMemberId(),
+                    "CREATE",
+                    "NOTICE",
+                    createdNotice.getNoticeId(),
+                    "공지사항 작성: " + noticeInput.title()
+            );
+        }
+
+        return createdNotice;
+    }
+
+    @Transactional
+    public Notice updateAdminNotice(String authorizationHeader, Long noticeId, AdminNoticeRequest request) {
+        LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
+        validateNoticeId(noticeId);
+        NoticeInput noticeInput = normalizeNoticeInput(request);
+
+        int updated = adminDao.updateAdminNotice(
+                noticeId,
+                noticeInput.title(),
+                noticeInput.content(),
+                noticeInput.noticeType(),
+                loginMember.getMemberId()
+        );
+
+        if (updated != 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "수정할 수 있는 정상 공지사항이 아닙니다.");
+        }
+
+        adminDao.insertAdminActionLog(
+                loginMember.getMemberId(),
+                "UPDATE",
+                "NOTICE",
+                noticeId,
+                "공지사항 수정: " + noticeInput.title()
+        );
+
+        return selectRequiredNotice(noticeId);
+    }
+
+    @Transactional
+    public Notice softDeleteAdminNotice(String authorizationHeader, Long noticeId) {
+        LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
+        validateNoticeId(noticeId);
+
+        int updated = adminDao.softDeleteAdminNotice(noticeId, loginMember.getMemberId());
+
+        if (updated != 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "삭제할 수 있는 정상 공지사항이 아닙니다.");
+        }
+
+        adminDao.insertAdminActionLog(
+                loginMember.getMemberId(),
+                "DELETE",
+                "NOTICE",
+                noticeId,
+                "공지사항 삭제 상태 전환"
+        );
+
+        return selectRequiredNotice(noticeId);
+    }
+
+    private Notice selectRequiredNotice(Long noticeId) {
+        Notice notice = adminDao.selectAdminNoticeById(noticeId);
+
+        if (notice == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "공지사항을 찾을 수 없습니다.");
+        }
+
+        return notice;
+    }
+
+    private void validateNoticeId(Long noticeId) {
+        if (noticeId == null) {
+            throw new IllegalArgumentException("공지사항을 선택해주세요.");
+        }
+    }
+
+    private String normalizeNoticeStatus(String status) {
+        if ("active".equals(status) || "deleted".equals(status)) {
+            return status;
+        }
+
+        return "all";
+    }
+
+    private NoticeInput normalizeNoticeInput(AdminNoticeRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("공지사항 정보를 입력해주세요.");
+        }
+
+        String title = normalizeRequiredText(request.getTitle(), "공지사항 제목을 입력해주세요.");
+        String content = normalizeRequiredText(request.getContent(), "공지사항 내용을 입력해주세요.");
+        String noticeType = normalizeNoticeType(request.getNoticeType());
+
+        return new NoticeInput(title, content, noticeType);
+    }
+
+    private String normalizeNoticeType(String noticeType) {
+        if ("UPDATE".equals(noticeType)) {
+            return "UPDATE";
+        }
+
+        if ("EMERGENCY".equals(noticeType)) {
+            return "EMERGENCY";
+        }
+
+        return "NORMAL";
+    }
+
+    private record NoticeInput(String title, String content, String noticeType) {
     }
 
     /* ==========================================================================

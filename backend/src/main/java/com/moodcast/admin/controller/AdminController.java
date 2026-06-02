@@ -11,6 +11,7 @@ import com.moodcast.admin.vo.AdminEmotionActivity;
 import com.moodcast.admin.vo.AdminMember;
 import com.moodcast.admin.vo.AdminMemberDetail;
 import com.moodcast.admin.vo.AdminMemberSuspendRequest;
+import com.moodcast.admin.vo.AdminNoticeRequest;
 import com.moodcast.admin.vo.AdminProfile;
 import com.moodcast.admin.vo.AdminProfileUpdateRequest;
 import com.moodcast.admin.vo.AdminRecentActivity;
@@ -18,12 +19,14 @@ import com.moodcast.admin.vo.AdminRoleUpdateRequest;
 import com.moodcast.admin.vo.AdminStatisticsSummary;
 import com.moodcast.admin.vo.AdminStatisticsTrend;
 import com.moodcast.admin.vo.AdminUserManagementSummary;
+import com.moodcast.admin.vo.Notice;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -32,6 +35,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 
 /* ==========================================================================
@@ -554,6 +558,58 @@ public class AdminController {
         return Map.of(
                 "items",
                 adminService.getStatisticsContentActivity(authorizationHeader, period)
+        );
+    }
+
+    @GetMapping("/notices")
+    public Map<String, List<Notice>> getAdminNotices(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestParam(defaultValue = "all") String status
+    ) {
+        return Map.of("notices", adminService.getAdminNotices(authorizationHeader, status));
+    }
+
+    @GetMapping("/notices/latest")
+    public Map<String, Notice> getLatestActiveNotice(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
+    ) {
+        Notice notice = adminService.getLatestActiveNotice(authorizationHeader);
+        Map<String, Notice> response = new HashMap<>();
+        response.put("notice", notice);
+        return response;
+    }
+
+    @PostMapping("/notices")
+    public Map<String, Object> createAdminNotice(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestBody AdminNoticeRequest request
+    ) {
+        return Map.of(
+                "success", true,
+                "notice", adminService.createAdminNotice(authorizationHeader, request)
+        );
+    }
+
+    @PutMapping("/notices/{noticeId}")
+    public Map<String, Object> updateAdminNotice(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long noticeId,
+            @RequestBody AdminNoticeRequest request
+    ) {
+        return Map.of(
+                "success", true,
+                "notice", adminService.updateAdminNotice(authorizationHeader, noticeId, request)
+        );
+    }
+
+    @PutMapping("/notices/{noticeId}/delete")
+    public Map<String, Object> softDeleteAdminNotice(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long noticeId
+    ) {
+        return Map.of(
+                "success", true,
+                "notice", adminService.softDeleteAdminNotice(authorizationHeader, noticeId)
         );
     }
 

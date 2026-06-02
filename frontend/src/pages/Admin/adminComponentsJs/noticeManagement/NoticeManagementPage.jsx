@@ -2,18 +2,23 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AdminLayout } from "../common/AdminLayout";
 import { EmptyState } from "../common/EmptyState";
 import { SegmentedControl } from "../common/SegmentedControl";
-import { formatKoreanDate } from "../../../../shared/lib/dateTime";
+import { useAuthStore } from "../../../../stores/useAuthStore";
 import styles from "../../adminComponentsCss/noticeManagement/NoticeManagementPage.module.css";
 import {
+  createAdminNotice,
+  fetchAdminNotices,
   formatCategoryTag,
-  loadNotices,
   NOTICE_CATEGORY,
   NOTICE_STATUS,
   NOTICE_WRITABLE_CATEGORIES,
-  saveNotices,
+  softDeleteAdminNotice,
+  stripNoticeAlignWrapper,
+  toNoticePayload,
+  updateAdminNotice,
 } from "./noticeStorage";
 
 const noticeCategories = ["전체", "일반", "업데이트", "긴급", "삭제 공지"];
+const RECENT_NOTICE_LIMIT = 10;
 
 const initialNoticeForm = {
   title: "",
@@ -27,27 +32,53 @@ const initialEditorMarks = {
   unorderedList: false,
   orderedList: false,
   link: false,
+  alignCenter: false,
 };
 
 export function NoticeManagementPage() {
+  const accessToken = useAuthStore((state) => state.accessToken);
   const [selectedCategory, setSelectedCategory] = useState("전체");
   const [noticeForm, setNoticeForm] = useState(initialNoticeForm);
   const [notices, setNotices] = useState([]);
   const [editingNoticeId, setEditingNoticeId] = useState(null);
   const [openedNotice, setOpenedNotice] = useState(null);
+  const [noticeResultPopup, setNoticeResultPopup] = useState(null);
+  const [showAllNotices, setShowAllNotices] = useState(false);
   const [editorMarks, setEditorMarks] = useState(initialEditorMarks);
   const [editorLink, setEditorLink] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const editorRef = useRef(null);
   const savedSelectionRef = useRef(null);
   const listEnterCountRef = useRef(0);
 
-  useEffect(() => {
-    setNotices(loadNotices());
-  }, []);
+  const loadNoticeList = async () => {
+    if (!accessToken) {
+      setNotices([]);
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMessage("");
+
+    try {
+      const nextNotices = await fetchAdminNotices(accessToken, "all");
+      setNotices(nextNotices);
+    } catch (error) {
+      console.error("[ADMIN_NOTICE_LIST_ERROR]", error);
+      setErrorMessage("공지사항 목록을 불러오지 못했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    saveNotices(notices);
-  }, [notices]);
+    loadNoticeList();
+  }, [accessToken]);
+
+  useEffect(() => {
+    setShowAllNotices(false);
+  }, [selectedCategory]);
 
   const filteredNotices = useMemo(() => {
     if (selectedCategory === "삭제 공지") {
@@ -69,6 +100,10 @@ export function NoticeManagementPage() {
 
   const isEditing = editingNoticeId !== null;
   const isDeletedNoticeTab = selectedCategory === "삭제 공지";
+  const displayedNotices = showAllNotices
+    ? filteredNotices
+    : filteredNotices.slice(0, RECENT_NOTICE_LIMIT);
+  const hasMoreNotices = filteredNotices.length > RECENT_NOTICE_LIMIT;
 
   const categoryClassMap = {
     [NOTICE_CATEGORY.GENERAL]: styles.categoryGeneral,
@@ -174,17 +209,26 @@ export function NoticeManagementPage() {
   const toggleListMark = (markKey, command) => {
     listEnterCountRef.current = 0;
 
+    const oppositeKey = markKey === "unorderedList" ? "orderedList" : "unorderedList";
     const nextMarks = {
       ...editorMarks,
       [markKey]: !editorMarks[markKey],
+      [oppositeKey]: false,
     };
 
     setEditorMarks(nextMarks);
     restoreEditorSelection();
     ensureEditorCommandState(command, nextMarks[markKey]);
+
+    if (!nextMarks[markKey]) {
+      applyEditorState(nextMarks);
+      return;
+    }
+
+    const oppositeCommand =
+      command === "insertUnorderedList" ? "insertOrderedList" : "insertUnorderedList";
+    ensureEditorCommandState(oppositeCommand, false);
     applyEditorState(nextMarks);
-    updateEditorContent();
-    saveEditorSelection();
   };
 
   const disableInlineMarksAfterEnter = () => {
@@ -274,25 +318,10 @@ export function NoticeManagementPage() {
       return;
     }
 
-    requestAnimationFrame(() => {
-      const nextMarks = {
-        ...editorMarks,
-        bold: false,
-        underline: false,
-      };
-      disableInlineMarksAfterEnter();
-    });
+    requestAnimationFrame(disableInlineMarksAfterEnter);
   };
 
-  const handleBold = () => toggleInlineMark("bold");
-  const handleUnderline = () => toggleInlineMark("underline");
-  const handleBulletList = () =>
-    toggleListMark("unorderedList", "insertUnorderedList");
-  const handleNumberList = () =>
-    toggleListMark("orderedList", "insertOrderedList");
-  const handleLink = () => toggleLinkMark();
-
-  const handleSubmitNotice = (event) => {
+  const handleSubmitNotice = async (event) => {
     event.preventDefault();
 
     const trimmedTitle = noticeForm.title.trim();
@@ -302,43 +331,38 @@ export function NoticeManagementPage() {
       return;
     }
 
-    if (isEditing) {
-      setNotices((prevNotices) =>
-        prevNotices.map((notice) =>
-          notice.id === editingNoticeId
-            ? {
-                ...notice,
-                title: trimmedTitle,
-                category: noticeForm.category,
-                content: noticeForm.content,
-                updatedAt: formatKoreanDate(new Date()),
-                updatedTimestamp: Date.now(),
-                version: (notice.version ?? 1) + 1,
-              }
-            : notice,
-        ),
-      );
+    const payload = toNoticePayload(
+      {
+        ...noticeForm,
+        title: trimmedTitle,
+      },
+      editorMarks.alignCenter,
+    );
+
+    try {
+      if (isEditing) {
+        await updateAdminNotice(accessToken, editingNoticeId, payload);
+        setNoticeResultPopup({
+          title: "수정 완료",
+          message: "공지사항이 수정되었습니다.",
+        });
+      } else {
+        await createAdminNotice(accessToken, payload);
+        setNoticeResultPopup({
+          title: "작성 완료",
+          message: "공지사항이 작성되었습니다.",
+        });
+      }
+
       resetForm();
-      return;
+      await loadNoticeList();
+    } catch (error) {
+      console.error("[ADMIN_NOTICE_SAVE_ERROR]", error);
+      setNoticeResultPopup({
+        title: "처리 실패",
+        message: "공지사항 저장 중 문제가 발생했습니다.",
+      });
     }
-
-    const createdNotice = {
-      id: Date.now(),
-      title: trimmedTitle,
-      category: noticeForm.category,
-      content: noticeForm.content,
-      status: NOTICE_STATUS.ACTIVE,
-      createdAt: formatKoreanDate(new Date()),
-      createdTimestamp: Date.now(),
-      adminName: "관리자",
-      updatedAt: null,
-      updatedTimestamp: null,
-      deletedAt: null,
-      version: 1,
-    };
-
-    setNotices((prevNotices) => [createdNotice, ...prevNotices]);
-    resetForm();
   };
 
   const handleEditNotice = (notice) => {
@@ -346,93 +370,60 @@ export function NoticeManagementPage() {
       return;
     }
 
+    const editableContent = stripNoticeAlignWrapper(notice.content);
+
     setEditingNoticeId(notice.id);
     setNoticeForm({
       title: notice.title,
       category: notice.category,
-      content: notice.content,
+      content: editableContent,
     });
-    setEditorMarks(initialEditorMarks);
+    setEditorMarks({
+      ...initialEditorMarks,
+      alignCenter: Boolean(notice.alignCenter),
+    });
     setEditorLink("");
 
     requestAnimationFrame(() => {
       if (editorRef.current) {
-        editorRef.current.innerHTML = notice.content;
+        editorRef.current.innerHTML = editableContent;
         editorRef.current.focus();
         saveEditorSelection();
       }
     });
   };
 
-  const handleDeleteNotice = (noticeId) => {
-    const deletedDate = formatKoreanDate(new Date());
-
-    setNotices((prevNotices) =>
-      prevNotices.map((notice) =>
-        notice.id === noticeId
-          ? {
-              ...notice,
-              status: NOTICE_STATUS.DELETE,
-              deletedAt: deletedDate,
-            }
-          : notice,
-      ),
-    );
-
-    if (editingNoticeId === noticeId) {
-      resetForm();
-    }
-
-    if (openedNotice?.id === noticeId) {
-      setOpenedNotice(null);
-    }
-  };
-
-  const handleRestoreNotice = (noticeId) => {
-    setNotices((prevNotices) =>
-      prevNotices.map((notice) =>
-        notice.id === noticeId
-          ? {
-              ...notice,
-              status: NOTICE_STATUS.ACTIVE,
-              deletedAt: null,
-            }
-          : notice,
-      ),
-    );
-  };
-
-  const handlePermanentDeleteNotice = (noticeId) => {
-    setNotices((prevNotices) =>
-      prevNotices.filter((notice) => notice.id !== noticeId),
-    );
-
-    if (openedNotice?.id === noticeId) {
-      setOpenedNotice(null);
+  const handleDeleteNotice = async (noticeId) => {
+    try {
+      await softDeleteAdminNotice(accessToken, noticeId);
+      await loadNoticeList();
+      if (editingNoticeId === noticeId) {
+        resetForm();
+      }
+      if (openedNotice?.id === noticeId) {
+        setOpenedNotice(null);
+      }
+    } catch (error) {
+      console.error("[ADMIN_NOTICE_DELETE_ERROR]", error);
     }
   };
 
   const editorButtons = [
-    { key: "bold", label: "굵게", pressed: editorMarks.bold, onClick: handleBold },
+    { key: "bold", label: "굵게", pressed: editorMarks.bold, onClick: () => toggleInlineMark("bold") },
+    { key: "underline", label: "밑줄", pressed: editorMarks.underline, onClick: () => toggleInlineMark("underline") },
+    { key: "unorderedList", label: "목록", pressed: editorMarks.unorderedList, onClick: () => toggleListMark("unorderedList", "insertUnorderedList") },
+    { key: "orderedList", label: "번호", pressed: editorMarks.orderedList, onClick: () => toggleListMark("orderedList", "insertOrderedList") },
+    { key: "link", label: "링크", pressed: editorMarks.link, onClick: toggleLinkMark },
     {
-      key: "underline",
-      label: "밑줄",
-      pressed: editorMarks.underline,
-      onClick: handleUnderline,
+      key: "alignCenter",
+      label: "가운데",
+      pressed: editorMarks.alignCenter,
+      onClick: () =>
+        setEditorMarks((prevMarks) => ({
+          ...prevMarks,
+          alignCenter: !prevMarks.alignCenter,
+        })),
     },
-    {
-      key: "unorderedList",
-      label: "목록",
-      pressed: editorMarks.unorderedList,
-      onClick: handleBulletList,
-    },
-    {
-      key: "orderedList",
-      label: "번호",
-      pressed: editorMarks.orderedList,
-      onClick: handleNumberList,
-    },
-    { key: "link", label: "링크", pressed: editorMarks.link, onClick: handleLink },
   ];
 
   return (
@@ -525,7 +516,7 @@ export function NoticeManagementPage() {
             <button type="button" onClick={resetForm}>
               {isEditing ? "수정 취소" : "초기화"}
             </button>
-            <button type="submit">
+            <button type="submit" disabled={isLoading}>
               {isEditing ? "공지사항 수정" : "공지사항 작성"}
             </button>
           </div>
@@ -542,17 +533,32 @@ export function NoticeManagementPage() {
 
       <section className={styles.panel}>
         <div className={styles.panelHead}>
-          <h2>{isDeletedNoticeTab ? "삭제 공지 목록" : "공지사항 목록"}</h2>
-          <span>
-            {isDeletedNoticeTab
-              ? "DELETE 상태 공지만 완전 삭제할 수 있습니다."
-              : "최신 공지 1건만 대시보드 팝업에 노출됩니다."}
-          </span>
+          <div>
+            <h2>{isDeletedNoticeTab ? "삭제 공지 목록" : "공지사항 목록"}</h2>
+            <span>
+              {isDeletedNoticeTab
+                ? "DELETE 상태 공지만 완전 삭제할 수 있습니다."
+                : "최신 공지 1건만 대시보드 팝업에 노출됩니다."}
+            </span>
+          </div>
+          {hasMoreNotices ? (
+            <button
+              type="button"
+              className={styles.viewAllButton}
+              onClick={() => setShowAllNotices((prevValue) => !prevValue)}
+            >
+              {showAllNotices ? "최근 10개 보기" : "전체 보기"}
+            </button>
+          ) : null}
         </div>
+
+        {errorMessage ? <p className={styles.errorText}>{errorMessage}</p> : null}
 
         <div className={styles.tableWrap}>
           <table
-            className={`${styles.noticeTable} ${isDeletedNoticeTab ? styles.deletedNoticeTable : ""}`}
+            className={`${styles.noticeTable} ${
+              isDeletedNoticeTab ? styles.deletedNoticeTable : ""
+            }`}
           >
             <thead>
               <tr>
@@ -565,8 +571,8 @@ export function NoticeManagementPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredNotices.length > 0 ? (
-                filteredNotices.map((notice) => (
+              {displayedNotices.length > 0 ? (
+                displayedNotices.map((notice) => (
                   <tr key={notice.id}>
                     <td>
                       <span
@@ -584,28 +590,18 @@ export function NoticeManagementPage() {
                         {notice.title}
                       </button>
                     </td>
-                    <td>{notice.createdAt}</td>
+                    <td>
+                      {notice.createdAt}
+                      {notice.isExpired ? (
+                        <span className={styles.expiredBadge}>만료</span>
+                      ) : null}
+                    </td>
                     <td>{notice.adminName}</td>
                     {isDeletedNoticeTab ? <td>{notice.deletedAt}</td> : null}
                     <td>
                       <div className={styles.rowActions}>
                         {isDeletedNoticeTab ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleRestoreNotice(notice.id)}
-                            >
-                              복구
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handlePermanentDeleteNotice(notice.id)
-                              }
-                            >
-                              완전 삭제
-                            </button>
-                          </>
+                          <span className={styles.actionMuted}>삭제됨</span>
                         ) : (
                           <>
                             <button
@@ -630,9 +626,7 @@ export function NoticeManagementPage() {
                 <tr>
                   <td colSpan={isDeletedNoticeTab ? 6 : 5}>
                     <EmptyState
-                      title={
-                        isDeletedNoticeTab ? "삭제 공지 없음" : "공지사항 없음"
-                      }
+                      title={isDeletedNoticeTab ? "삭제 공지 없음" : "공지사항 없음"}
                       description={
                         isDeletedNoticeTab
                           ? "소프트 삭제 상태의 공지사항이 없습니다."
@@ -681,11 +675,40 @@ export function NoticeManagementPage() {
               ) : null}
             </div>
             <div
-              className={styles.modalContent}
+              className={`${styles.modalContent} ${
+                openedNotice.alignCenter ? styles.modalContentCenter : ""
+              }`}
               dangerouslySetInnerHTML={{ __html: openedNotice.content }}
             />
           </section>
         </div>
+      ) : null}
+
+      {noticeResultPopup ? (
+        <section
+          className={styles.noticeResultLayer}
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="notice-result-title"
+        >
+          <button
+            type="button"
+            className={styles.noticeResultDim}
+            aria-label="공지사항 작성 결과 팝업 닫기"
+            onClick={() => setNoticeResultPopup(null)}
+          />
+
+          <article className={styles.noticeResultPopup}>
+            <span className={styles.noticeResultBadge}>
+              {noticeResultPopup.title.includes("실패") ? "실패" : "성공"}
+            </span>
+            <h3 id="notice-result-title">{noticeResultPopup.title}</h3>
+            <p>{noticeResultPopup.message}</p>
+            <button type="button" onClick={() => setNoticeResultPopup(null)}>
+              확인
+            </button>
+          </article>
+        </section>
       ) : null}
     </AdminLayout>
   );
