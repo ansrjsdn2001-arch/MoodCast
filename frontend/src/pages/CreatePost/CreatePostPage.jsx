@@ -287,7 +287,7 @@ export function CreatePostPage() {
     <section className={styles.wrap}>
       <div className={styles.hero}>
         <strong>게시물 작성</strong>
-        <p>감정, 사진, 태그, 영상까지 함께 넣어 게시물을 만들 수 있습니다.</p>
+        <p>감정, 사진, 태그까지 함께 넣어 게시물을 만들 수 있습니다.</p>
       </div>
       <div className={styles.card}>
         <div className={styles.field}>
