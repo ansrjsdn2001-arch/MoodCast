@@ -96,6 +96,12 @@ export const SignupPage = () => {
     }, duration);
   };
 
+  const logDevAuthCode = (label, authCode) => {
+    if (authCode) {
+      console.log(`[MoodCast 개발용 인증번호] ${label}: ${authCode}`);
+    }
+  };
+
   // 이메일
   useEffect(() => {
     if (emailCooldown <= 0) {
@@ -567,7 +573,7 @@ export const SignupPage = () => {
         email: email,
       })
       .then((res) => {
-        console.log(res);
+        logDevAuthCode("회원가입 이메일", res.data?.authCode);
         setEmailAuth(1);
         setEmailCooldown(60);
         setEmailExpireTime(180);
@@ -705,6 +711,7 @@ export const SignupPage = () => {
         setPhoneAuth(1);
         setPhoneCooldown(60);
         setPhoneExpireTime(180);
+        logDevAuthCode("회원가입 휴대폰", res.data?.authCode);
         showToast("success", res.data?.message || "휴대폰 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
       })
       .catch((err) => {

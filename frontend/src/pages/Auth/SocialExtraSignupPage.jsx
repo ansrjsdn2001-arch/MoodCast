@@ -39,6 +39,12 @@ export const SocialExtraSignupPage = () => {
     setTimeout(() => setToast({ show: false, type: "", message: "" }), duration);
   };
 
+  const logDevAuthCode = (label, authCode) => {
+    if (authCode) {
+      console.log(`[MoodCast 개발용 인증번호] ${label}: ${authCode}`);
+    }
+  };
+
   useEffect(() => {
     const pendingText = window.sessionStorage.getItem(SOCIAL_SIGNUP_PENDING_KEY);
     if (!pendingText) {
@@ -111,6 +117,7 @@ export const SocialExtraSignupPage = () => {
       })
       .then((res) => {
         setPhoneAuth(1);
+        logDevAuthCode("소셜 회원가입 휴대폰", res.data?.authCode);
         showToast("success", res.data?.message || "휴대폰 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
       })
       .catch((err) => {

@@ -13,6 +13,7 @@ import com.moodcast.member.dto.login.LoginResult;
 import com.moodcast.member.dto.login.RefreshTokenInfo;
 import com.moodcast.member.dto.login.UpdateProfileRequest;
 import com.moodcast.member.dto.password.PasswordChangeRequest;
+import com.moodcast.member.dto.signup.EmailAuthSendResult;
 import com.moodcast.member.dto.withdraw.WithdrawRequest;
 import com.moodcast.member.vo.Member;
 import io.jsonwebtoken.JwtException;
@@ -322,7 +323,7 @@ public class LoginService {
 
     // 회원 row는 삭제하지 않고 WITHDRAW 상태와 deleted_at으로 탈퇴 처리함
     @Transactional
-    public String sendWithdrawEmailAuthCode(String authorizationHeader, String clientIp) {
+    public EmailAuthSendResult sendWithdrawEmailAuthCode(String authorizationHeader, String clientIp) {
         String email = getLoginMemberEmail(authorizationHeader);
 
         authCodeRedisService.checkCooldown(WITHDRAW_PURPOSE, EMAIL_TARGET_TYPE, email);
@@ -343,7 +344,7 @@ public class LoginService {
             System.out.println("회원 탈퇴 이메일 인증번호: " + authCode);
         }
 
-        return email;
+        return new EmailAuthSendResult(email, authCode);
     }
 
     @Transactional(noRollbackFor = IllegalArgumentException.class)

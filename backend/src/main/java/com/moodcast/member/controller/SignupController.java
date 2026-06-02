@@ -40,14 +40,16 @@ public class SignupController {
             HttpServletRequest httpRequest
     ) {
 
-            String email = signupService.sendEmailAuthCode(request.getEmail(), getClientIp(httpRequest));
-            return ResponseEntity.ok(
-                    Map.of(
-                            "success", true,
-                            "message", "이메일 인증번호를 발송했습니다. 3분 안에 입력해주세요.",
-                            "email", email
-                    )
-            );
+            EmailAuthSendResult result = signupService.sendEmailAuthCode(request.getEmail(), getClientIp(httpRequest));
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("success", true);
+            response.put("message", "이메일 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
+            response.put("email", result.getEmail());
+            if (devReturnAuthCode) {
+                response.put("authCode", result.getAuthCode());
+            }
+
+            return ResponseEntity.ok(response);
     }
 
     // 회원가입 이메일 인증번호 확인

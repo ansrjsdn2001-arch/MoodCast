@@ -15,6 +15,7 @@ import com.moodcast.member.dto.recovery.FindEmailVerifyRequest;
 import com.moodcast.member.dto.recovery.PasswordResetCodeRequest;
 import com.moodcast.member.dto.recovery.PasswordResetRequest;
 import com.moodcast.member.dto.recovery.PasswordResetVerifyRequest;
+import com.moodcast.member.dto.signup.EmailAuthSendResult;
 import com.moodcast.member.dto.signup.PhoneAuthSendResult;
 import com.moodcast.member.dto.withdraw.WithdrawRequest;
 import com.moodcast.member.dto.follow.FollowResponse;
@@ -353,15 +354,17 @@ public class LoginController {
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
             HttpServletRequest httpRequest
     ) {
-        String email = loginService.sendWithdrawEmailAuthCode(authorizationHeader, getClientIp(httpRequest));
+        EmailAuthSendResult result = loginService.sendWithdrawEmailAuthCode(authorizationHeader, getClientIp(httpRequest));
 
-        return ResponseEntity.ok(
-                Map.of(
-                        "success", true,
-                        "message", "탈퇴 확인 이메일 인증번호를 발송했습니다. 3분 안에 입력해주세요.",
-                        "email", email
-                )
-        );
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", true);
+        response.put("message", "탈퇴 확인 이메일 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
+        response.put("email", result.getEmail());
+        if (devReturnAuthCode) {
+            response.put("authCode", result.getAuthCode());
+        }
+
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("withdraw/email/verify")

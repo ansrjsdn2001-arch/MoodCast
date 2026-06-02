@@ -55,6 +55,12 @@ export function SettingsPage() {
     setTimeout(() => setToast({ show: false, type: '', message: '' }), duration);
   };
 
+  const logDevAuthCode = (label, authCode) => {
+    if (authCode) {
+      console.log(`[MoodCast 개발용 인증번호] ${label}: ${authCode}`);
+    }
+  };
+
   const handleKakaoLink = () => {
     if (kakaoLinked) {
       showToast('success', '이미 카카오 계정이 연결되어 있습니다.');
@@ -184,6 +190,7 @@ export function SettingsPage() {
 
       setWithdrawEmailCodeSent(true);
       setWithdrawEmailVerified(false);
+      logDevAuthCode('회원 탈퇴 이메일', res.data?.authCode);
       showToast('success', res.data?.message || '탈퇴 확인 이메일 인증번호를 발송했습니다.');
     } catch (error) {
       showToast('error', getApiMessage(error, '탈퇴 확인 이메일 인증번호 발송에 실패했습니다.'));

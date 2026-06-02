@@ -1,6 +1,7 @@
 package com.moodcast.member.service;
 
 import com.moodcast.member.dao.SignupDao;
+import com.moodcast.member.dto.signup.EmailAuthSendResult;
 import com.moodcast.member.dto.signup.PhoneAuthSendResult;
 import com.moodcast.member.dto.signup.SignupRequest;
 import com.moodcast.member.dto.signup.SignupTermsAgreementRequest;
@@ -237,13 +238,13 @@ public class SignupService {
 
     // 이메일 인증코드
     @Transactional
-    public String sendEmailAuthCode(String email) {
+    public EmailAuthSendResult sendEmailAuthCode(String email) {
         return sendEmailAuthCode(email, "UNKNOWN");
     }
 
     // 이메일 인증코드
     @Transactional
-    public String sendEmailAuthCode(String email, String clientIp) {
+    public EmailAuthSendResult sendEmailAuthCode(String email, String clientIp) {
         email = normalizeEmail(email);
 
         checkEmailDuplicate(email);
@@ -267,8 +268,11 @@ public class SignupService {
             throw new IllegalStateException("이메일 인증번호 발송 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.");
         }
 
+        if (devReturnAuthCode) {
+            System.out.println("이메일 인증번호: " + authCode);
+        }
 
-        return email;
+        return new EmailAuthSendResult(email, authCode);
     }
 
     // 휴대폰 인증코드
