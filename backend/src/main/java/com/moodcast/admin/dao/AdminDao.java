@@ -15,6 +15,7 @@ import com.moodcast.admin.vo.AdminRecentMember;
 import com.moodcast.admin.vo.AdminStatisticsSummary;
 import com.moodcast.admin.vo.AdminStatisticsTrend;
 import com.moodcast.admin.vo.AdminUserManagementSummary;
+import com.moodcast.admin.vo.Notice;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -204,4 +205,31 @@ public interface AdminDao {
             @Param("nickname") String nickname,
             @Param("phone") String phone
     );
+
+    List<Notice> selectAdminNotices(@Param("status") String status);
+
+    Notice selectAdminNoticeById(@Param("noticeId") Long noticeId);
+
+    Notice selectLatestActiveNotice();
+
+    int insertAdminNotice(
+            @Param("title") String title,
+            @Param("content") String content,
+            @Param("noticeType") String noticeType,
+            @Param("adminId") Long adminId
+    );
+
+    int updateAdminNotice(
+            @Param("noticeId") Long noticeId,
+            @Param("title") String title,
+            @Param("content") String content,
+            @Param("noticeType") String noticeType,
+            @Param("adminId") Long adminId
+    );
+
+    int softDeleteAdminNotice(
+            @Param("noticeId") Long noticeId,
+            @Param("adminId") Long adminId
+    );
+
 }
