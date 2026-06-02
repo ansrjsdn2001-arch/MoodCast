@@ -3,6 +3,9 @@ package com.moodcast.admin.service;
 import com.moodcast.admin.dao.AdminDao;
 import com.moodcast.admin.vo.AdminDashboardSummary;
 import com.moodcast.admin.vo.AdminActionLogView;
+import com.moodcast.admin.vo.AdminActiveUserStat;
+import com.moodcast.admin.vo.AdminContentComment;
+import com.moodcast.admin.vo.AdminContentHashtag;
 import com.moodcast.admin.vo.AdminContentPost;
 import com.moodcast.admin.vo.AdminEmotionActivity;
 import com.moodcast.admin.vo.AdminMember;
@@ -11,6 +14,8 @@ import com.moodcast.admin.vo.AdminMemberSuspendRequest;
 import com.moodcast.admin.vo.AdminProfile;
 import com.moodcast.admin.vo.AdminProfileUpdateRequest;
 import com.moodcast.admin.vo.AdminRecentActivity;
+import com.moodcast.admin.vo.AdminStatisticsSummary;
+import com.moodcast.admin.vo.AdminStatisticsTrend;
 import com.moodcast.admin.vo.AdminUserManagementSummary;
 import com.moodcast.member.dto.login.LoginMemberResponse;
 import com.moodcast.member.service.LoginService;
@@ -28,6 +33,7 @@ import java.util.List;
 import java.util.Objects;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 /* ==========================================================================
  * 관리자 페이지 공통 서비스
@@ -47,6 +53,7 @@ import java.time.LocalDateTime;
 public class AdminService {
 
     private static final Logger log = LoggerFactory.getLogger(AdminService.class);
+    private static final ZoneId KOREA_ZONE = ZoneId.of("Asia/Seoul");
 
     @Autowired // 나중에 DB 조회가 필요할 때 사용할 DAO를 연결합니다.
     private AdminDao adminDao;
@@ -164,6 +171,42 @@ public class AdminService {
         log.info("[ADMIN_API] selectAdminContentPosts success size={}", posts == null ? 0 : posts.size());
 
         return posts;
+    }
+
+    /* ========================================================================
+     * 콘텐츠 관리 댓글 목록 조회
+     * ------------------------------------------------------------------------
+     * 관리자 콘텐츠 관리의 "댓글" 탭에서 사용할 댓글 데이터를 조회합니다.
+     *
+     * 초보자 설명:
+     * - 컨트롤러는 요청만 받고, 이 서비스가 먼저 관리자 권한을 확인합니다.
+     * - 권한 확인이 끝나면 DAO를 통해 comment_tbl 기준 댓글 목록을 가져옵니다.
+     * ======================================================================== */
+    public List<AdminContentComment> getAdminContentComments(String authorizationHeader) {
+        validateAdmin(authorizationHeader);
+        log.info("[ADMIN_API] selectAdminContentComments start");
+        List<AdminContentComment> comments = adminDao.selectAdminContentComments();
+        log.info("[ADMIN_API] selectAdminContentComments success size={}", comments == null ? 0 : comments.size());
+
+        return comments;
+    }
+
+    /* ========================================================================
+     * 콘텐츠 관리 해시태그 목록 조회
+     * ------------------------------------------------------------------------
+     * 관리자 콘텐츠 관리의 "해시태그" 탭에서 사용할 해시태그 데이터를 조회합니다.
+     *
+     * 초보자 설명:
+     * - hashtag 테이블의 태그 이름과 post_hashtag 연결 수를 함께 가져옵니다.
+     * - 검색과 페이지네이션은 현재 프론트에서 처리하므로 최근 500개 기준으로 내려줍니다.
+     * ======================================================================== */
+    public List<AdminContentHashtag> getAdminContentHashtags(String authorizationHeader) {
+        validateAdmin(authorizationHeader);
+        log.info("[ADMIN_API] selectAdminContentHashtags start");
+        List<AdminContentHashtag> hashtags = adminDao.selectAdminContentHashtags();
+        log.info("[ADMIN_API] selectAdminContentHashtags success size={}", hashtags == null ? 0 : hashtags.size());
+
+        return hashtags;
     }
 
     /*
@@ -329,6 +372,119 @@ public class AdminService {
         }
 
         return post;
+    }
+
+    @Transactional
+    public AdminContentComment hideAdminContentComment(String authorizationHeader, Long commentId) {
+        LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
+        AdminContentComment comment = selectRequiredAdminContentComment(commentId);
+
+        if ("Y".equals(comment.getDeletedYn())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "삭제된 댓글은 숨김 처리할 수 없습니다.");
+        }
+
+        adminDao.insertAdminActionLog(
+                loginMember.getMemberId(),
+                "HIDE",
+                "COMMENT",
+                commentId,
+                "댓글 숨김 처리"
+        );
+
+        return selectRequiredAdminContentComment(commentId);
+    }
+
+    @Transactional
+    public AdminContentComment restoreAdminContentComment(String authorizationHeader, Long commentId) {
+        LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
+        AdminContentComment comment = selectRequiredAdminContentComment(commentId);
+
+        if ("Y".equals(comment.getDeletedYn())) {
+            int restored = adminDao.restoreAdminContentComment(commentId);
+
+            if (restored != 1) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "복구 가능한 삭제 댓글이 아닙니다.");
+            }
+        } else {
+            adminDao.insertAdminActionLog(
+                    loginMember.getMemberId(),
+                    "RESTORE",
+                    "COMMENT",
+                    commentId,
+                    "댓글 숨김 복구"
+            );
+        }
+
+        return selectRequiredAdminContentComment(commentId);
+    }
+
+    @Transactional
+    public AdminContentComment softDeleteAdminContentComment(String authorizationHeader, Long commentId) {
+        LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
+        selectRequiredAdminContentComment(commentId);
+
+        int deleted = adminDao.softDeleteAdminContentComment(commentId);
+
+        if (deleted != 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "삭제 가능한 댓글이 아닙니다.");
+        }
+
+        adminDao.insertAdminActionLog(
+                loginMember.getMemberId(),
+                "DELETE_COMMENT",
+                "COMMENT",
+                commentId,
+                "댓글 삭제 처리"
+        );
+
+        return selectRequiredAdminContentComment(commentId);
+    }
+
+    @Transactional
+    public void hardDeleteAdminContentHashtag(String authorizationHeader, Long hashtagId) {
+        LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
+        validateHashtagId(hashtagId);
+
+        int exists = adminDao.countAdminContentHashtagById(hashtagId);
+
+        if (exists < 1) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "해시태그를 찾을 수 없습니다.");
+        }
+
+        adminDao.deleteAdminPostHashtagsByHashtagId(hashtagId);
+        int deleted = adminDao.hardDeleteAdminContentHashtag(hashtagId);
+
+        if (deleted != 1) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "해시태그 삭제에 실패했습니다.");
+        }
+
+        adminDao.insertAdminActionLog(
+                loginMember.getMemberId(),
+                "HARD_DELETE_HASHTAG",
+                "HASHTAG",
+                hashtagId,
+                "해시태그 완전 삭제"
+        );
+    }
+
+    private AdminContentComment selectRequiredAdminContentComment(Long commentId) {
+        if (commentId == null) {
+            throw new IllegalArgumentException("댓글을 선택해주세요.");
+        }
+
+        AdminContentComment comment = adminDao.selectAdminContentCommentById(commentId);
+
+        if (comment == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "댓글 정보를 찾을 수 없습니다.");
+        }
+
+        return comment;
+    }
+
+    private void validateHashtagId(Long hashtagId) {
+        if (hashtagId == null) {
+            throw new IllegalArgumentException("해시태그를 선택해주세요.");
+        }
     }
 
     /* ==========================================================================
@@ -634,7 +790,12 @@ public class AdminService {
         if (request.getSuspendedUntil() != null && !request.getSuspendedUntil().trim().isEmpty()) {
             LocalDateTime customSuspendedUntil = LocalDate.parse(request.getSuspendedUntil().trim()).atTime(23, 59, 59);
 
-            if (!customSuspendedUntil.isAfter(LocalDateTime.now())) {
+            /*
+             * 시간대 주의:
+             * EC2/로컬 실행 환경의 기본 시간대가 UTC로 잡히면 LocalDateTime.now() 기준이 달라질 수 있습니다.
+             * 관리자 정지 만료일은 화면과 DB 통계가 모두 서울 시간을 기준으로 동작하므로 명시적으로 Asia/Seoul을 사용합니다.
+             */
+            if (!customSuspendedUntil.isAfter(LocalDateTime.now(KOREA_ZONE))) {
                 throw new IllegalArgumentException("정지 해제일은 현재보다 이후 날짜로 선택해주세요.");
             }
 
@@ -647,7 +808,7 @@ public class AdminService {
             throw new IllegalArgumentException("정지 기간을 선택해주세요.");
         }
 
-        return LocalDateTime.now().plusDays(suspendDays);
+        return LocalDateTime.now(KOREA_ZONE).plusDays(suspendDays);
     }
 
     private String buildSuspendActionDetail(String suspendType, LocalDateTime suspendedUntil) {
@@ -834,6 +995,23 @@ public class AdminService {
     }
 
     /*
+     * 관리자 대시보드 시간별 활성 사용자 조회
+     * --------------------------------------------------------------------------
+     * members.last_login_at을 기준으로 일/주/월 단위 활성 사용자 수를 조회합니다.
+     */
+    public List<AdminActiveUserStat> getDashboardActiveUsers(
+            String authorizationHeader,
+            String period
+    ) {
+        validateAdmin(authorizationHeader);
+
+        String normalizedPeriod = normalizeDashboardPeriod(period);
+        List<AdminActiveUserStat> activeUsers = adminDao.selectDashboardActiveUsers(normalizedPeriod);
+
+        return activeUsers == null ? Collections.emptyList() : activeUsers;
+    }
+
+    /*
      * 관리자 대시보드 최근 활동 10개 조회
      * --------------------------------------------------------------------------
      * 가입, 탈퇴, 정지, 정지 해제처럼 관리자 대시보드에서 바로 확인해야 하는 활동만 최신순으로 가져옵니다.
@@ -855,6 +1033,49 @@ public class AdminService {
         validateAdmin(authorizationHeader);
 
         List<AdminRecentActivity> activities = adminDao.selectAllDashboardActivities();
+
+        return activities == null ? Collections.emptyList() : activities;
+    }
+
+    /*
+     * 통계 대시보드 기간별 요약 조회
+     * --------------------------------------------------------------------------
+     * 프론트에서 선택한 일/주/월 값을 백엔드에서 한 번 더 검증한 뒤 DB에 전달합니다.
+     * 이렇게 하면 프론트가 잘못된 period 값을 보내도 SQL 조건이 깨지지 않습니다.
+     */
+    public AdminStatisticsSummary getStatisticsSummary(String authorizationHeader, String period) {
+        validateAdmin(authorizationHeader);
+
+        String normalizedPeriod = normalizeDashboardPeriod(period);
+        AdminStatisticsSummary summary = adminDao.selectStatisticsSummary(normalizedPeriod);
+
+        return summary == null ? new AdminStatisticsSummary(0L, 0L, 0L, 0L, 0L, 0L) : summary;
+    }
+
+    /*
+     * 통계 대시보드 가입자 추이 조회
+     * --------------------------------------------------------------------------
+     * day는 00~23시, week는 최근 7일, month는 최근 4주 단위로 가입자 흐름을 가져옵니다.
+     */
+    public List<AdminStatisticsTrend> getStatisticsSubscriberTrend(String authorizationHeader, String period) {
+        validateAdmin(authorizationHeader);
+
+        String normalizedPeriod = normalizeDashboardPeriod(period);
+        List<AdminStatisticsTrend> trends = adminDao.selectStatisticsSubscriberTrend(normalizedPeriod);
+
+        return trends == null ? Collections.emptyList() : trends;
+    }
+
+    /*
+     * 통계 대시보드 콘텐츠 활동 조회
+     * --------------------------------------------------------------------------
+     * 게시글, 댓글, 공감 수를 같은 형태(label/value)로 내려주면 프론트 막대 그래프가 단순해집니다.
+     */
+    public List<AdminStatisticsTrend> getStatisticsContentActivity(String authorizationHeader, String period) {
+        validateAdmin(authorizationHeader);
+
+        String normalizedPeriod = normalizeDashboardPeriod(period);
+        List<AdminStatisticsTrend> activities = adminDao.selectStatisticsContentActivity(normalizedPeriod);
 
         return activities == null ? Collections.emptyList() : activities;
     }
