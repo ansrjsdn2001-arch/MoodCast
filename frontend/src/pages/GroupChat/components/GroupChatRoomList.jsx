@@ -49,7 +49,7 @@ export function GroupChatRoomList({
         </button>
       </form>
 
-      <div className="group-chat-room-list">
+      <div className="group-chat-room-list" data-dashboard-scroll-container="group-room-list">
         {isLoading ? <p className="group-chat-helper">채팅방을 불러오는 중입니다.</p> : null}
         {!isLoading && rooms.length === 0 ? (
           <p className="group-chat-empty">참여 중인 그룹 채팅방이 없습니다.</p>

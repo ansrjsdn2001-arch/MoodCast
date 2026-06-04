@@ -12,6 +12,7 @@ import SentimentSatisfiedAltRoundedIcon from "@mui/icons-material/SentimentSatis
 import styles from "../../MoodChat/MoodChatPage.module.css";
 import { defaultAvatarSrc } from "../../../shared/lib/defaultAvatar";
 import { formatKoreanTime } from "../../../shared/lib/dateTime";
+import { fetchGroupChatMembers } from "../../../shared/api/groupChatApi";
 import { uploadChatImages } from "../../../shared/api/fileUploadApi";
 import { EmojiPicker } from "../../../shared/ui/emoji-picker/EmojiPicker";
 import { RichTextContent } from "../../../shared/ui/rich-text/RichTextContent";
@@ -20,11 +21,11 @@ function getRoomTitle(activeRoom) {
   return activeRoom?.roomName || "그룹 채팅방";
 }
 
-function getRoomSubtitle(activeRoom, connected) {
+function getRoomSubtitleParts(activeRoom, connected) {
   const memberCount = Number(activeRoom?.memberCount || 0);
   const countText = memberCount > 0 ? `참여 인원 ${memberCount}명` : "참여 인원 정보 없음";
   const connectionText = connected ? "실시간 연결됨" : "연결 대기";
-  return `${countText} · ${connectionText}`;
+  return { countText, connectionText };
 }
 
 function isNearBottom(element) {
@@ -66,6 +67,10 @@ export function GroupChatRoomDetail({
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [messageActionMenu, setMessageActionMenu] = useState(null);
   const [isLeaveConfirmOpen, setIsLeaveConfirmOpen] = useState(false);
+  const [isMembersPanelOpen, setIsMembersPanelOpen] = useState(false);
+  const [memberList, setMemberList] = useState([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [memberListError, setMemberListError] = useState("");
   const messagesRef = useRef(null);
   const bottomRef = useRef(null);
   const imageInputRef = useRef(null);
@@ -398,13 +403,75 @@ export function GroupChatRoomDetail({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRoom?.roomId]);
 
+  useEffect(() => {
+    setIsMembersPanelOpen(false);
+    setMemberList([]);
+    setMemberListError("");
+    setIsLoadingMembers(false);
+  }, [activeRoom?.roomId]);
+
+  useEffect(() => {
+    if (!isMembersPanelOpen) {
+      return undefined;
+    }
+
+    const { body, documentElement } = document;
+    const scrollContainers = Array.from(
+      document.querySelectorAll("[data-dashboard-scroll-container]"),
+    );
+    const scrollY = window.scrollY || window.pageYOffset || 0;
+    const previousBodyOverflow = body.style.overflow;
+    const previousHtmlOverflow = documentElement.style.overflow;
+    const previousBodyPosition = body.style.position;
+    const previousBodyTop = body.style.top;
+    const previousBodyLeft = body.style.left;
+    const previousBodyRight = body.style.right;
+    const previousBodyWidth = body.style.width;
+    const previousContainerStyles = scrollContainers.map((element) => ({
+      element,
+      overflow: element.style.overflow,
+      overflowY: element.style.overflowY,
+      height: element.style.height,
+      maxHeight: element.style.maxHeight,
+    }));
+
+    body.style.overflow = "hidden";
+    documentElement.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.left = "0";
+    body.style.right = "0";
+    body.style.width = "100%";
+    scrollContainers.forEach((element) => {
+      element.style.overflow = "hidden";
+      element.style.overflowY = "hidden";
+    });
+
+    return () => {
+      body.style.overflow = previousBodyOverflow;
+      documentElement.style.overflow = previousHtmlOverflow;
+      body.style.position = previousBodyPosition;
+      body.style.top = previousBodyTop;
+      body.style.left = previousBodyLeft;
+      body.style.right = previousBodyRight;
+      body.style.width = previousBodyWidth;
+      previousContainerStyles.forEach(({ element, overflow, overflowY, height, maxHeight }) => {
+        element.style.overflow = overflow;
+        element.style.overflowY = overflowY;
+        element.style.height = height;
+        element.style.maxHeight = maxHeight;
+      });
+      window.scrollTo(0, scrollY);
+    };
+  }, [isMembersPanelOpen]);
+
   if (!activeRoom) {
     return null;
   }
 
   const roomTitle = getRoomTitle(activeRoom);
   const roomInitial = roomTitle.charAt(0).toUpperCase();
-  const roomSubtitle = getRoomSubtitle(activeRoom, connected);
+  const roomSubtitle = getRoomSubtitleParts(activeRoom, connected);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -454,6 +521,34 @@ export function GroupChatRoomDetail({
     requestAnimationFrame(focusMessageInput);
   };
 
+  const openMembersPanel = async () => {
+    if (!activeRoom?.roomId) {
+      return;
+    }
+
+    setIsMembersPanelOpen(true);
+    setMemberListError("");
+    setIsLoadingMembers(true);
+
+    try {
+      const response = await fetchGroupChatMembers(activeRoom.roomId);
+      const nextMemberList = Array.isArray(response.data) ? response.data : [];
+      console.log("[GroupChat] 참여자 목록 응답", response.data);
+      console.log("[GroupChat] 참여자 목록 첫 항목", nextMemberList[0]);
+      setMemberList(nextMemberList);
+    } catch (requestError) {
+      console.error("그룹 채팅 참여자 목록 조회 실패", requestError);
+      setMemberList([]);
+      setMemberListError("참여 인원 목록을 불러오지 못했습니다.");
+    } finally {
+      setIsLoadingMembers(false);
+    }
+  };
+
+  const closeMembersPanel = () => {
+    setIsMembersPanelOpen(false);
+  };
+
   return (
     <div className={styles.room}>
       <div className={styles.roomHeader}>
@@ -468,7 +563,28 @@ export function GroupChatRoomDetail({
         <div className={styles.headerAvatar}>{roomInitial}</div>
         <div className={styles.roomTitle}>
           <strong>{roomTitle}</strong>
-          <span>{roomSubtitle}</span>
+          <span>
+            <button
+              type="button"
+              onClick={openMembersPanel}
+              aria-label="참여 인원 목록 열기"
+              aria-expanded={isMembersPanelOpen}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                padding: 0,
+                border: 0,
+                background: "transparent",
+                color: "#667085",
+                font: "inherit",
+                cursor: "pointer",
+              }}
+            >
+              {roomSubtitle.countText}
+            </button>
+            <span> · {roomSubtitle.connectionText}</span>
+          </span>
         </div>
         <div className={styles.headerActions}>
           <div style={{ position: "relative" }}>
@@ -554,6 +670,7 @@ export function GroupChatRoomDetail({
       <div
         ref={messagesRef}
         className={styles.messages}
+        data-dashboard-scroll-container="group-messages"
         aria-live="polite"
         onScroll={handleMessagesScroll}
       >
@@ -880,6 +997,101 @@ export function GroupChatRoomDetail({
               </button>
               <button type="button" className="moodchat-primaryButton" onClick={handleConfirmLeave}>
                 나가기
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isMembersPanelOpen ? (
+        <div className="moodchat-modalBackdrop" role="presentation" onClick={closeMembersPanel}>
+          <div
+            className="moodchat-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="참여 인원 목록"
+            onClick={(event) => event.stopPropagation()}
+            style={{ height: "auto", maxHeight: "none", minHeight: "0" }}
+          >
+            <div className="moodchat-modalHeader">
+              <div>
+                <strong>참여 인원</strong>
+                <p>현재 그룹 채팅방에 참여 중인 인원입니다.</p>
+              </div>
+              <button
+                type="button"
+                className="moodchat-iconButton"
+                onClick={closeMembersPanel}
+                aria-label="닫기"
+              >
+                <CloseRoundedIcon />
+              </button>
+            </div>
+
+            <div className="moodchat-modalSummary">
+              <span>{roomTitle}</span>
+              <strong>{Number(activeRoom?.memberCount || 0)}명</strong>
+            </div>
+
+            <div className="moodchat-memberList">
+              {isLoadingMembers ? (
+                <p className="moodchat-emptyState">참여 인원 목록을 불러오는 중입니다.</p>
+              ) : null}
+
+              {!isLoadingMembers && memberListError ? (
+                <p className="moodchat-emptyState">{memberListError}</p>
+              ) : null}
+
+              {!isLoadingMembers && !memberListError && memberList.length === 0 ? (
+                <p className="moodchat-emptyState">참여 중인 인원이 없습니다.</p>
+              ) : null}
+
+              {!isLoadingMembers
+                ? memberList.map((member) => {
+                    const memberId = Number(member?.memberId);
+                    const displayName = member?.memberName || `회원 ${memberId || ""}`;
+                    const memberEmail = String(
+                      member?.email ||
+                        member?.memberEmail ||
+                        member?.member_email ||
+                        member?.loginEmail ||
+                        member?.loginId ||
+                        "",
+                    ).trim();
+                    const profileImageSrc = member?.profileImageUrl || defaultAvatarSrc;
+                    const isCurrentUser = Number(currentMemberId) === memberId;
+
+                    return (
+                      <div key={memberId || displayName} className="moodchat-memberItem">
+                        <img
+                          className="moodchat-memberAvatar"
+                          src={profileImageSrc}
+                          alt={displayName}
+                          onError={(event) => {
+                            event.currentTarget.src = defaultAvatarSrc;
+                          }}
+                        />
+                        <div className="moodchat-memberMeta">
+                          <strong>
+                            {displayName}
+                            {isCurrentUser ? " (나)" : ""}
+                          </strong>
+                          <span>{memberEmail || "이메일 정보 없음"}</span>
+                        </div>
+                        <span className="moodchat-checkbox">
+                          {member?.joinedAt
+                            ? formatKoreanTime(member.joinedAt) || member.joinedAt
+                            : "참여"}
+                        </span>
+                      </div>
+                    );
+                  })
+                : null}
+            </div>
+
+            <div className="moodchat-modalActions">
+              <button type="button" className="moodchat-primaryButton" onClick={closeMembersPanel}>
+                닫기
               </button>
             </div>
           </div>
