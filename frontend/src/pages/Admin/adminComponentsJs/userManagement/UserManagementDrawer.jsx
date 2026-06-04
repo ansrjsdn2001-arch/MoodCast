@@ -57,6 +57,10 @@ export function UserManagementDrawer({
   ).replace(/\/$/, "");
 
   useEffect(() => {
+    if (!selectedManagedMember) {
+      return undefined;
+    }
+
     const previousBodyOverflow = document.body.style.overflow;
     const previousHtmlOverflow = document.documentElement.style.overflow;
 
@@ -67,7 +71,7 @@ export function UserManagementDrawer({
       document.body.style.overflow = previousBodyOverflow;
       document.documentElement.style.overflow = previousHtmlOverflow;
     };
-  }, []);
+  }, [selectedManagedMember]);
 
   /*
    * 선택 회원이 바뀔 때 패널 내부 상태 초기화

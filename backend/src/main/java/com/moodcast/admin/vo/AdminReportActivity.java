@@ -3,8 +3,8 @@ package com.moodcast.admin.vo;
 import lombok.Data;
 
 /*
- * 신고 상세 패널의 최근 활동 항목입니다.
- * 대상 회원이 작성한 게시글, 댓글, 관리자 제재 로그를 같은 형태로 내려줍니다.
+ * 신고 상세 패널에 표시할 최근 활동 항목입니다.
+ * 대상 회원의 게시글, 댓글, 관리자 제재 로그를 같은 형태로 내려줍니다.
  */
 @Data
 public class AdminReportActivity {

@@ -26,11 +26,16 @@ public class AdminReport {
     private String targetMemberName;
     private String targetMemberNickname;
     private String targetMemberEmail;
+    private LocalDateTime targetMemberCreatedAt;
+    private Long targetPostCount;
+    private Long targetCommentCount;
+    private Long targetLikeCount;
 
     private Long postId;
     private Long commentId;
     private String postTitle;
     private String targetContent;
+    private String commentContent;
 
     private String reason;
     private String reportStatus;
@@ -38,10 +43,13 @@ public class AdminReport {
     private String handledMemo;
     private Long handledByMemberId;
     private String handledByMemberName;
+    private LocalDateTime reviewedAt;
     private LocalDateTime handledAt;
     private LocalDateTime createdAt;
 
     private Long sameTargetReportCount;
+    private Long sameTargetReporterCount;
 
     private List<AdminReportActivity> activities;
+    private List<AdminReportReporter> reporters;
 }

@@ -14,6 +14,7 @@ import com.moodcast.admin.vo.AdminRecentActivity;
 import com.moodcast.admin.vo.AdminRecentMember;
 import com.moodcast.admin.vo.AdminReport;
 import com.moodcast.admin.vo.AdminReportActivity;
+import com.moodcast.admin.vo.AdminReportReporter;
 import com.moodcast.admin.vo.AdminStatisticsSummary;
 import com.moodcast.admin.vo.AdminStatisticsTrend;
 import com.moodcast.admin.vo.AdminUserManagementSummary;
@@ -191,6 +192,8 @@ public interface AdminDao {
 
     /* 신고 상세 패널에 표시할 대상 회원의 최근 활동을 조회합니다. */
     List<AdminReportActivity> selectAdminReportRecentActivities(@Param("memberId") Long memberId);
+
+    List<AdminReportReporter> selectAdminReportReporters(@Param("reportId") Long reportId);
 
     /* 처리 대기 신고를 검토 중 상태로 전환합니다. */
     int markAdminReportReviewing(@Param("reportId") Long reportId);

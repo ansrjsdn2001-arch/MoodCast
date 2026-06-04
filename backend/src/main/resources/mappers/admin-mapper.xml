@@ -210,19 +210,26 @@
         <result property="targetMemberName" column="target_member_name"/>
         <result property="targetMemberNickname" column="target_member_nickname"/>
         <result property="targetMemberEmail" column="target_member_email"/>
+        <result property="targetMemberCreatedAt" column="target_member_created_at"/>
+        <result property="targetPostCount" column="target_post_count"/>
+        <result property="targetCommentCount" column="target_comment_count"/>
+        <result property="targetLikeCount" column="target_like_count"/>
         <result property="postId" column="post_id"/>
         <result property="commentId" column="comment_id"/>
         <result property="postTitle" column="post_title"/>
         <result property="targetContent" column="target_content"/>
+        <result property="commentContent" column="comment_content"/>
         <result property="reason" column="reason"/>
         <result property="reportStatus" column="report_status"/>
         <result property="processResult" column="process_result"/>
         <result property="handledMemo" column="handled_memo"/>
         <result property="handledByMemberId" column="handled_by_member_id"/>
         <result property="handledByMemberName" column="handled_by_member_name"/>
+        <result property="reviewedAt" column="reviewed_at"/>
         <result property="handledAt" column="handled_at"/>
         <result property="createdAt" column="created_at"/>
         <result property="sameTargetReportCount" column="same_target_report_count"/>
+        <result property="sameTargetReporterCount" column="same_target_reporter_count"/>
     </resultMap>
 
     <!-- 신고 상세 패널의 최근 활동 결과 매핑입니다. -->
@@ -230,6 +237,17 @@
         <result property="type" column="type"/>
         <result property="text" column="text"/>
         <result property="time" column="time"/>
+    </resultMap>
+
+    <!-- 신고 상세 패널의 동일 대상 신고자 결과 매핑입니다. -->
+    <resultMap id="adminReportReporterMap" type="com.moodcast.admin.vo.AdminReportReporter">
+        <result property="memberId" column="member_id"/>
+        <result property="name" column="name"/>
+        <result property="nickname" column="nickname"/>
+        <result property="email" column="email"/>
+        <result property="reportCount" column="report_count"/>
+        <result property="firstReportedAt" column="first_reported_at"/>
+        <result property="latestReportedAt" column="latest_reported_at"/>
     </resultMap>
 
     <!-- selectTotalMemberCount 조회 쿼리입니다. 관리자 화면에서 필요한 데이터를 조회합니다. -->
@@ -823,6 +841,36 @@
                 when r.post_id is not null then post_author.email
                 else comment_author.email
             end as target_member_email,
+            case
+                when r.post_id is not null then post_author.created_at
+                else comment_author.created_at
+            end as target_member_created_at,
+            (
+                select count(*)
+                from post_tbl target_post_count
+                where target_post_count.member_id = case
+                    when r.post_id is not null then post_author.member_id
+                    else comment_author.member_id
+                end
+                  and coalesce(target_post_count.deleted_yn, 'N') = 'N'
+            ) as target_post_count,
+            (
+                select count(*)
+                from comment_tbl target_comment_count
+                where target_comment_count.member_id = case
+                    when r.post_id is not null then post_author.member_id
+                    else comment_author.member_id
+                end
+                  and coalesce(target_comment_count.deleted_yn, 'N') = 'N'
+            ) as target_comment_count,
+            (
+                select count(*)
+                from post_like target_like_count
+                where target_like_count.member_id = case
+                    when r.post_id is not null then post_author.member_id
+                    else comment_author.member_id
+                end
+            ) as target_like_count,
             r.post_id,
             r.comment_id,
             coalesce(post_target.title, comment_post.title) as post_title,
@@ -830,12 +878,14 @@
                 when r.post_id is not null then post_target.content
                 else comment_target.content
             end as target_content,
+            comment_target.content as comment_content,
             r.reason,
             r.report_status,
             r.process_result,
             r.handled_memo,
             r.handled_by_member_id,
             handled_member.name as handled_by_member_name,
+            r.reviewed_at,
             r.handled_at,
             r.created_at,
             (
@@ -849,7 +899,19 @@
                     r.comment_id is not null
                     and same_report.comment_id = r.comment_id
                 )
-            ) as same_target_report_count
+            ) as same_target_report_count,
+            (
+                select count(distinct same_report.reporter_member_id)
+                from report same_report
+                where (
+                    r.post_id is not null
+                    and same_report.post_id = r.post_id
+                )
+                or (
+                    r.comment_id is not null
+                    and same_report.comment_id = r.comment_id
+                )
+            ) as same_target_reporter_count
         from report r
         left join members reporter on reporter.member_id = r.reporter_member_id
         left join post_tbl post_target on post_target.post_id = r.post_id
@@ -875,7 +937,13 @@
         <if test="processResult != null and processResult != '' and processResult != 'ALL'">
             and r.process_result = #{processResult}
         </if>
-        order by r.created_at desc, r.report_id desc
+        order by
+            case
+                when r.report_status = 'DONE' and r.handled_at is not null then r.handled_at
+                when r.report_status = 'REVIEWING' and r.reviewed_at is not null then r.reviewed_at
+                else r.created_at
+            end desc,
+            r.report_id desc
     </select>
 
     <!-- selectAdminReportById 조회 쿼리입니다. 신고 상세와 처리 후 갱신에 사용합니다. -->
@@ -908,6 +976,36 @@
                     when r.post_id is not null then post_author.email
                     else comment_author.email
                 end as target_member_email,
+                case
+                    when r.post_id is not null then post_author.created_at
+                    else comment_author.created_at
+                end as target_member_created_at,
+                (
+                    select count(*)
+                    from post_tbl target_post_count
+                    where target_post_count.member_id = case
+                        when r.post_id is not null then post_author.member_id
+                        else comment_author.member_id
+                    end
+                      and coalesce(target_post_count.deleted_yn, 'N') = 'N'
+                ) as target_post_count,
+                (
+                    select count(*)
+                    from comment_tbl target_comment_count
+                    where target_comment_count.member_id = case
+                        when r.post_id is not null then post_author.member_id
+                        else comment_author.member_id
+                    end
+                      and coalesce(target_comment_count.deleted_yn, 'N') = 'N'
+                ) as target_comment_count,
+                (
+                    select count(*)
+                    from post_like target_like_count
+                    where target_like_count.member_id = case
+                        when r.post_id is not null then post_author.member_id
+                        else comment_author.member_id
+                    end
+                ) as target_like_count,
                 r.post_id,
                 r.comment_id,
                 coalesce(post_target.title, comment_post.title) as post_title,
@@ -915,12 +1013,14 @@
                     when r.post_id is not null then post_target.content
                     else comment_target.content
                 end as target_content,
+                comment_target.content as comment_content,
                 r.reason,
                 r.report_status,
                 r.process_result,
                 r.handled_memo,
                 r.handled_by_member_id,
                 handled_member.name as handled_by_member_name,
+                r.reviewed_at,
                 r.handled_at,
                 r.created_at,
                 (
@@ -934,7 +1034,19 @@
                         r.comment_id is not null
                         and same_report.comment_id = r.comment_id
                     )
-                ) as same_target_report_count
+                ) as same_target_report_count,
+                (
+                    select count(distinct same_report.reporter_member_id)
+                    from report same_report
+                    where (
+                        r.post_id is not null
+                        and same_report.post_id = r.post_id
+                    )
+                    or (
+                        r.comment_id is not null
+                        and same_report.comment_id = r.comment_id
+                    )
+                ) as same_target_reporter_count
             from report r
             left join members reporter on reporter.member_id = r.reporter_member_id
             left join post_tbl post_target on post_target.post_id = r.post_id
@@ -982,15 +1094,46 @@
               and log.action_type in ('SUSPEND', 'RESTORE')
         ) recent_activity
         order by activity_created_at desc
-        limit 5
+        limit 50
+    </select>
+
+    <!-- selectAdminReportReporters 조회 쿼리입니다. 같은 게시글/댓글을 신고한 신고자 목록을 조회합니다. -->
+    <select id="selectAdminReportReporters" resultMap="adminReportReporterMap">
+        select
+            reporter.member_id,
+            reporter.name,
+            reporter.nickname,
+            reporter.email,
+            count(*) as report_count,
+            date_format(min(same_report.created_at), '%Y-%m-%d %H:%i') as first_reported_at,
+            date_format(max(same_report.created_at), '%Y-%m-%d %H:%i') as latest_reported_at
+        from report base_report
+        join report same_report
+          on (
+                base_report.post_id is not null
+                and same_report.post_id = base_report.post_id
+             )
+          or (
+                base_report.comment_id is not null
+                and same_report.comment_id = base_report.comment_id
+             )
+        left join members reporter on reporter.member_id = same_report.reporter_member_id
+        where base_report.report_id = #{reportId}
+        group by
+            reporter.member_id,
+            reporter.name,
+            reporter.nickname,
+            reporter.email
+        order by max(same_report.created_at) desc, max(same_report.report_id) desc
     </select>
 
     <!-- markAdminReportReviewing 수정 쿼리입니다. 처음 확인한 신고를 검토 중으로 전환합니다. -->
     <update id="markAdminReportReviewing">
         update report
-        set report_status = 'REVIEWING'
+        set report_status = 'REVIEWING',
+            reviewed_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
         where report_id = #{reportId}
-          and report_status = 'PENDING'
+          and report_status in ('PENDING', 'REVIEWING')
     </update>
 
     <!-- processAdminReport 수정 쿼리입니다. 신고를 처리 완료 상태로 저장합니다. -->

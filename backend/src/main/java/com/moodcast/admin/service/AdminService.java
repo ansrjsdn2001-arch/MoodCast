@@ -18,6 +18,7 @@ import com.moodcast.admin.vo.AdminRecentActivity;
 import com.moodcast.admin.vo.AdminReport;
 import com.moodcast.admin.vo.AdminReportActivity;
 import com.moodcast.admin.vo.AdminReportProcessRequest;
+import com.moodcast.admin.vo.AdminReportReporter;
 import com.moodcast.admin.vo.AdminStatisticsSummary;
 import com.moodcast.admin.vo.AdminStatisticsTrend;
 import com.moodcast.admin.vo.AdminUserManagementSummary;
@@ -754,15 +755,17 @@ public class AdminService {
 
         AdminReport report = selectRequiredAdminReport(reportId);
 
-        if ("PENDING".equals(report.getReportStatus())) {
+        if ("PENDING".equals(report.getReportStatus()) || "REVIEWING".equals(report.getReportStatus())) {
             adminDao.markAdminReportReviewing(reportId);
-            adminDao.insertAdminActionLog(
-                    loginMember.getMemberId(),
-                    "REVIEW_REPORT",
-                    "REPORT",
-                    reportId,
-                    "신고 검토 시작"
-            );
+            if ("PENDING".equals(report.getReportStatus())) {
+                adminDao.insertAdminActionLog(
+                        loginMember.getMemberId(),
+                        "REVIEW_REPORT",
+                        "REPORT",
+                        reportId,
+                        "신고 검토 시작"
+                );
+            }
             report = selectRequiredAdminReport(reportId);
         }
 
@@ -887,6 +890,7 @@ public class AdminService {
         }
 
         attachRecentActivities(report);
+        attachReporters(report);
 
         return report;
     }
@@ -901,6 +905,18 @@ public class AdminService {
 
         List<AdminReportActivity> activities = adminDao.selectAdminReportRecentActivities(report.getTargetMemberId());
         report.setActivities(activities == null ? Collections.emptyList() : activities);
+    }
+
+    private void attachReporters(AdminReport report) {
+        if (report == null || report.getReportId() == null) {
+            if (report != null) {
+                report.setReporters(Collections.emptyList());
+            }
+            return;
+        }
+
+        List<AdminReportReporter> reporters = adminDao.selectAdminReportReporters(report.getReportId());
+        report.setReporters(reporters == null ? Collections.emptyList() : reporters);
     }
 
     private String normalizeReportStatus(String status) {

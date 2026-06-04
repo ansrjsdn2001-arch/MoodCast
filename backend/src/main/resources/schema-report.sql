@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS report (
   report_status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
   process_result VARCHAR(30) NULL,
   handled_memo VARCHAR(500) NULL,
+  reviewed_at DATETIME(6) NULL,
   handled_at DATETIME(6) NULL,
   handled_by_member_id BIGINT NULL,
   created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -15,6 +16,7 @@ CREATE TABLE IF NOT EXISTS report (
   KEY idx_report_post_id (post_id),
   KEY idx_report_comment_id (comment_id),
   KEY idx_report_status_created (report_status, created_at),
+  KEY idx_report_status_reviewed (report_status, reviewed_at),
   KEY idx_report_result_created (process_result, created_at),
   KEY idx_report_handled_member (handled_by_member_id),
   CONSTRAINT fk_report_reporter_member

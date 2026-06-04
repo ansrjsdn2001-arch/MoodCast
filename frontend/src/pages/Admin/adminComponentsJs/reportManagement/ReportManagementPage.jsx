@@ -175,10 +175,10 @@ export function ReportManagementPage() {
       }
 
       if (sortType === SORT_LABELS.old) {
-        return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+        return getReportSortTime(a) - getReportSortTime(b);
       }
 
-      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+      return getReportSortTime(b) - getReportSortTime(a);
     });
   }, [reports, searchKeyword, sortType]);
 
@@ -587,21 +587,24 @@ function mapAdminReport(report) {
     reason: report.reason || REPORT_LABELS.etc,
     detail: report.handledMemo || report.targetContent || "-",
     reportCount: report.sameTargetReportCount || 1,
+    reporterCount:
+      report.sameTargetReporterCount ||
+      (Array.isArray(report.reporters) ? report.reporters.length : 1),
     firstReportedAt: formatDateTime(report.createdAt),
     latestReportedAt: formatDateTime(report.createdAt),
     reportedAgo: formatDateTime(report.createdAt),
-    joinedAt: "-",
-    postCount: "-",
-    commentCount: "-",
-    likeCount: "-",
+    joinedAt: formatDate(report.targetMemberCreatedAt),
+    postCount: formatCount(report.targetPostCount),
+    commentCount: formatCount(report.targetCommentCount),
+    likeCount: formatCount(report.targetLikeCount),
     createdAt: report.createdAt,
+    reviewedAtValue: report.reviewedAt,
     handledAtValue: report.handledAt,
     processResult,
     targetContent: report.targetContent || "-",
+    commentContent: report.commentContent || "",
     handledByMemberName: report.handledByMemberName || "",
-    reporters: [
-      report.reporterName || report.reporterNickname || report.reporterEmail || "-",
-    ],
+    reporters: mapReporters(report),
     activities: Array.isArray(report.activities)
       ? report.activities.map((activity, index) => ({
           id: `${activity.type || "activity"}-${activity.time || index}-${index}`,
@@ -621,6 +624,66 @@ function mapAdminReport(report) {
         }
       : null,
   };
+}
+
+function formatCount(value) {
+  return Number.isFinite(Number(value)) ? Number(value).toLocaleString("ko-KR") : "-";
+}
+
+function mapReporters(report) {
+  if (Array.isArray(report.reporters) && report.reporters.length > 0) {
+    return report.reporters.map((reporter, index) => ({
+      id: reporter.memberId || `${reporter.email || "reporter"}-${index}`,
+      name: reporter.name || reporter.nickname || reporter.email || "-",
+      handle: reporter.email ? `@${reporter.email}` : reporter.nickname || "",
+      reportCount: Number(reporter.reportCount || 0),
+      reportedAt: reporter.latestReportedAt || reporter.firstReportedAt || "-",
+      firstReportedAt: reporter.firstReportedAt || "-",
+      latestReportedAt: reporter.latestReportedAt || "-",
+    }));
+  }
+
+  return [
+    {
+      id: report.reporterMemberId || "reporter-0",
+      name: report.reporterName || report.reporterNickname || report.reporterEmail || "-",
+      handle: report.reporterEmail ? `@${report.reporterEmail}` : "",
+      reportCount: 1,
+      reportedAt: formatDateTime(report.createdAt),
+      firstReportedAt: formatDateTime(report.createdAt),
+      latestReportedAt: formatDateTime(report.createdAt),
+    },
+  ];
+}
+
+function formatDate(value) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value).replace("T", " ");
+
+  return date.toLocaleDateString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+}
+
+function getReportSortTime(report) {
+  const getTime = (value) => {
+    const time = new Date(value || 0).getTime();
+    return Number.isNaN(time) ? 0 : time;
+  };
+
+  if (report.status === REPORT_LABELS.done) {
+    return getTime(report.handledAtValue || report.createdAt);
+  }
+
+  if (report.status === REPORT_LABELS.reviewing) {
+    return getTime(report.reviewedAtValue || report.createdAt);
+  }
+
+  return getTime(report.createdAt);
 }
 
 function formatDateTime(value) {
