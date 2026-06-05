@@ -474,6 +474,8 @@ export function SettingsPage() {
         description={`해제하면 ${unlinkModal?.label || '소셜'} 로그인은 사용할 수 없습니다. MoodCast 계정과 기존 게시글은 그대로 유지됩니다.`}
         cancelText="취소"
         confirmText={isSocialUnlinkLoading ? '해제 중' : '해제하기'}
+        cancelDisabled={isSocialUnlinkLoading}
+        confirmDisabled={isSocialUnlinkLoading}
         onCancel={() => setUnlinkModal(null)}
         onConfirm={confirmSocialUnlink}
       />
@@ -491,6 +493,8 @@ export function SettingsPage() {
         description="탈퇴하면 현재 로그인 세션이 모두 종료되고, 같은 계정으로 다시 로그인할 수 없습니다."
         cancelText="취소"
         confirmText={isWithdrawLoading ? '처리 중' : '탈퇴하기'}
+        cancelDisabled={isWithdrawLoading}
+        confirmDisabled={isWithdrawLoading}
         onCancel={() => setWithdrawConfirmModalOpen(false)}
         onConfirm={confirmWithdraw}
       />

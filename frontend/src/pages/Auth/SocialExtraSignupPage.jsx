@@ -102,7 +102,13 @@ export const SocialExtraSignupPage = () => {
     }));
   };
 
-  const completeSocialSignup = () => {
+  const completeSocialSignup = (event) => {
+    event?.preventDefault();
+
+    if (signupSubmitting) {
+      return;
+    }
+
     if (!nameRegex.test(form.name.trim())) {
       showToast("error", "이름은 한글 2~10자로 입력해주세요.");
       return;
@@ -183,7 +189,7 @@ export const SocialExtraSignupPage = () => {
           <p>{pending?.providerEmail || `${providerLabel} 계정`}에 추가 정보를 연결합니다</p>
         </header>
 
-        <form className={styles.form}>
+        <form className={styles.form} onSubmit={completeSocialSignup}>
           <div className={styles.field}>
             <label htmlFor="socialName">
               이름 <b>*</b>
@@ -232,9 +238,8 @@ export const SocialExtraSignupPage = () => {
               취소
             </button>
             <button
-              type="button"
+              type="submit"
               className={styles.primaryButton}
-              onClick={completeSocialSignup}
               disabled={signupSubmitting}
             >
               {signupSubmitting ? "가입 중..." : "가입 완료"}

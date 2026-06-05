@@ -97,10 +97,6 @@ public class LoginController {
             return "EMAIL_NOT_VERIFIED";
         }
 
-        if (message.contains("\uD734\uB300\uD3F0 \uC778\uC99D")) {
-            return "PHONE_NOT_VERIFIED";
-        }
-
         if (message.contains("\uBE44\uBC00\uBC88\uD638")) {
             return "PASSWORD_MISMATCH";
         }
@@ -142,10 +138,6 @@ public class LoginController {
 
         if (message.contains("\uC774\uBA54\uC77C \uC778\uC99D")) {
             return "EMAIL_NOT_VERIFIED";
-        }
-
-        if (message.contains("\uD734\uB300\uD3F0 \uC778\uC99D")) {
-            return "PHONE_NOT_VERIFIED";
         }
 
         if (auditMember != null && message.contains("\uB85C\uADF8\uC778")) {
@@ -456,7 +448,6 @@ public class LoginController {
                 )
         );
     }
-    // Authentication request handling.
     @PostMapping("follow/{memberId}")
     public ResponseEntity<FollowResponse> toggleFollow(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
@@ -464,7 +455,6 @@ public class LoginController {
     ) {
         return ResponseEntity.ok(loginService.toggleFollow(authHeader, memberId));
     }
-    // Authentication request handling.
     @GetMapping("follow/status/{memberId}")
     public ResponseEntity<FollowCheckResponse> getFollowStatus(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
@@ -488,11 +478,9 @@ public class LoginController {
     ) {
         return ResponseEntity.ok(loginService.getFollowingList(authHeader, memberId));
     }
-    // Authentication request handling.
     @PostMapping("logout")
     public ResponseEntity<?> logout(HttpServletRequest request) {
         String refreshToken = null;
-    // Authentication request handling.
         if (request.getCookies() != null) {
             for (Cookie cookie : request.getCookies()) {
                 if (jwtService.getRefreshCookieName().equals(cookie.getName())) {
@@ -518,7 +506,6 @@ public class LoginController {
                         getUserAgent(request)
                 );
             } catch (AuthException | IllegalArgumentException e) {
-    // Authentication request handling.
                 loginAuditService.record(
                         getAuditMemberId(auditMember),
                         getAuditMemberEmail(auditMember),
@@ -547,13 +534,9 @@ public class LoginController {
     @PostMapping("refresh")
     public ResponseEntity<?> refresh(HttpServletRequest request) {
         String refreshToken = null;
-    // Authentication request handling.
         if (request.getCookies() != null) {
-    // Authentication request handling.
             for (Cookie cookie : request.getCookies()) {
-    // Authentication request handling.
                 if (jwtService.getRefreshCookieName().equals(cookie.getName())) {
-    // Authentication request handling.
                     refreshToken = cookie.getValue();
                     break;
                 }
@@ -585,19 +568,15 @@ public class LoginController {
 
             throw e;
         }
-    // Authentication request handling.
         LoginResponse response = new LoginResponse(
                 true,
                 "\uD1A0\uD070 \uC7AC\uBC1C\uAE09 \uC131\uACF5",
                 result.getAccessToken(),
                 result.getMember()
         );
-    // Authentication request handling.
         ResponseCookie refreshCookie = jwtService.createRefreshCookie(result.getRefreshToken());
-    // Authentication request handling.
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
                 .body(response);
     }
 }
-
