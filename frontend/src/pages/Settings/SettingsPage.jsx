@@ -43,6 +43,10 @@ export function SettingsPage() {
   const [naverLinkModalOpen, setNaverLinkModalOpen] = useState(false);
   const [unlinkModal, setUnlinkModal] = useState(null);
   const [passwordSuccessModalOpen, setPasswordSuccessModalOpen] = useState(false);
+  const [passwordSuccessModal, setPasswordSuccessModal] = useState({
+    title: '비밀번호가 변경되었습니다.',
+    description: '보안을 위해 다시 로그인해주세요.',
+  });
   const [withdrawConfirmModalOpen, setWithdrawConfirmModalOpen] = useState(false);
   const [withdrawSuccessModalOpen, setWithdrawSuccessModalOpen] = useState(false);
   const [withdrawPanelOpen, setWithdrawPanelOpen] = useState(false);
@@ -253,9 +257,54 @@ export function SettingsPage() {
 
       clearAuthData();
       setPasswordForm(initialPasswordForm);
+      setPasswordSuccessModal({
+        title: '비밀번호가 변경되었습니다.',
+        description: '보안을 위해 다시 로그인해주세요.',
+      });
       setPasswordSuccessModalOpen(true);
     } catch (error) {
       showToast('error', getApiMessage(error, '비밀번호 변경에 실패했습니다.'));
+    } finally {
+      setIsPasswordLoading(false);
+    }
+  };
+
+  const handlePasswordSetup = async (event) => {
+    event.preventDefault();
+
+    const payload = {
+      newPassword: passwordForm.newPassword.trim(),
+      newPasswordConfirm: passwordForm.newPasswordConfirm.trim(),
+    };
+
+    if (!passwordRegex.test(payload.newPassword)) {
+      showToast('error', passwordPolicyMessage);
+      return;
+    }
+
+    if (payload.newPassword !== payload.newPasswordConfirm) {
+      showToast('error', '새 비밀번호가 일치하지 않습니다.');
+      return;
+    }
+
+    try {
+      setIsPasswordLoading(true);
+      await axios.post(`${BACKSERVER}/auth/password/setup`, payload, {
+        headers: {
+          Authorization: 'Bearer ' + accessToken,
+        },
+        withCredentials: true,
+      });
+
+      clearAuthData();
+      setPasswordForm(initialPasswordForm);
+      setPasswordSuccessModal({
+        title: '비밀번호가 설정되었습니다.',
+        description: '보안을 위해 다시 로그인해주세요. 이제 일반 로그인도 사용할 수 있습니다.',
+      });
+      setPasswordSuccessModalOpen(true);
+    } catch (error) {
+      showToast('error', getApiMessage(error, '비밀번호 설정에 실패했습니다.'));
     } finally {
       setIsPasswordLoading(false);
     }
@@ -430,8 +479,8 @@ export function SettingsPage() {
       />
       <AuthConfirmModal
         open={passwordSuccessModalOpen}
-        title="비밀번호가 변경되었습니다."
-        description="보안을 위해 다시 로그인해주세요."
+        title={passwordSuccessModal.title}
+        description={passwordSuccessModal.description}
         confirmOnly
         confirmText="로그인하기"
         onConfirm={confirmPasswordSuccess}
@@ -637,12 +686,38 @@ export function SettingsPage() {
                 </button>
               </form>
             ) : title === '보안' ? (
-              <div className={styles.passwordNotice}>
-                <strong>소셜 로그인 계정입니다.</strong>
-                <p>
-                  이 계정은 아직 비밀번호가 설정되어 있지 않습니다. 연결된 소셜 로그인으로 로그인해주세요.
-                </p>
-              </div>
+              <form className={styles.passwordForm} onSubmit={handlePasswordSetup}>
+                <div className={styles.passwordNotice}>
+                  <strong>소셜 로그인 계정입니다.</strong>
+                  <p>
+                    비밀번호를 설정하면 이메일/비밀번호 로그인도 사용할 수 있고, 마지막 소셜 계정도 해제할 수 있습니다.
+                  </p>
+                </div>
+                <label>
+                  <span>새 비밀번호</span>
+                  <input
+                    type="password"
+                    name="newPassword"
+                    value={passwordForm.newPassword}
+                    onChange={handlePasswordInputChange}
+                    autoComplete="new-password"
+                  />
+                </label>
+                <label>
+                  <span>새 비밀번호 확인</span>
+                  <input
+                    type="password"
+                    name="newPasswordConfirm"
+                    value={passwordForm.newPasswordConfirm}
+                    onChange={handlePasswordInputChange}
+                    autoComplete="new-password"
+                  />
+                </label>
+                <p className={styles.helperText}>{passwordPolicyMessage}</p>
+                <button type="submit" disabled={isPasswordLoading}>
+                  {isPasswordLoading ? '설정 중' : '비밀번호 설정'}
+                </button>
+              </form>
             ) : (
               <button type="button">세부 설정</button>
             )}

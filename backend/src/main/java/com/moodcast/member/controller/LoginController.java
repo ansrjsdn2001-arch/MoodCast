@@ -260,6 +260,38 @@ public class LoginController {
                 );
     }
 
+    @PostMapping("password/setup")
+    public ResponseEntity<?> setupPassword(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestBody PasswordChangeRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        LoginMemberResponse loginMember = loginService.getLoginMemberByHeader(authorizationHeader);
+        loginService.setupPassword(authorizationHeader, request);
+
+        loginAuditService.record(
+                loginMember.getMemberId(),
+                loginMember.getEmail(),
+                null,
+                "PASSWORD_SETUP",
+                true,
+                null,
+                getClientIp(httpRequest),
+                getUserAgent(httpRequest)
+        );
+
+        ResponseCookie deleteCookie = jwtService.createDeleteRefreshCookie();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
+                .body(
+                        Map.of(
+                                "success", true,
+                                "message", "\uBE44\uBC00\uBC88\uD638\uAC00 \uC124\uC815\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uB85C\uADF8\uC778\uD574\uC8FC\uC138\uC694."
+                        )
+                );
+    }
+
     @PostMapping("recovery/email/send-code")
     public ResponseEntity<?> sendFindEmailCode(
             @RequestBody FindEmailCodeRequest request,
@@ -568,5 +600,4 @@ public class LoginController {
                 .body(response);
     }
 }
-
 

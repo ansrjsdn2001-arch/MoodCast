@@ -119,9 +119,6 @@ public class LoginService {
             throw new IllegalArgumentException("\uC774\uBA54\uC77C \uC778\uC99D\uC774 \uC644\uB8CC\uB418\uC9C0 \uC54A\uC740 \uACC4\uC815\uC785\uB2C8\uB2E4.");
         }
 
-        if (!Integer.valueOf(1).equals(member.getPhoneVerified())) {
-            throw new IllegalArgumentException("\uD734\uB300\uD3F0 \uC778\uC99D\uC774 \uC644\uB8CC\uB418\uC9C0 \uC54A\uC740 \uACC4\uC815\uC785\uB2C8\uB2E4.");
-        }
     }
 
     /*
@@ -345,6 +342,37 @@ public class LoginService {
         }
 
         passwordHistoryDao.insertPasswordHistory(memberId, currentPasswordHash);
+        refreshTokenRedisService.deleteAllRefreshTokens(memberId);
+    }
+
+    @Transactional
+    public void setupPassword(String authorizationHeader, PasswordChangeRequest request) {
+        Long memberId = getMemberIdFromHeader(authorizationHeader);
+        Member member = loginDao.findMemberById(memberId);
+
+        if (member == null) {
+            throw new AuthException("\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
+        }
+
+        checkLoginAllowed(member);
+
+        if (request == null) {
+            throw new IllegalArgumentException("\uBE44\uBC00\uBC88\uD638 \uC124\uC815 \uC815\uBCF4\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");
+        }
+
+        checkNewPassword(request.getNewPassword(), request.getNewPasswordConfirm());
+
+        String currentPasswordHash = loginDao.findPasswordHashByMemberId(memberId);
+        if (currentPasswordHash != null && !currentPasswordHash.trim().isEmpty()) {
+            throw new IllegalArgumentException("\uC774\uBBF8 \uBE44\uBC00\uBC88\uD638\uAC00 \uC124\uC815\uB41C \uACC4\uC815\uC785\uB2C8\uB2E4. \uBE44\uBC00\uBC88\uD638 \uBCC0\uACBD\uC744 \uC774\uC6A9\uD574\uC8FC\uC138\uC694.");
+        }
+
+        String newPasswordHash = passwordEncoder.encode(request.getNewPassword());
+        int updateResult = loginDao.updatePasswordHash(memberId, newPasswordHash);
+        if (updateResult != 1) {
+            throw new IllegalStateException("\uBE44\uBC00\uBC88\uD638 \uC124\uC815\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+        }
+
         refreshTokenRedisService.deleteAllRefreshTokens(memberId);
     }
     // Internal authentication and member-account workflow.
