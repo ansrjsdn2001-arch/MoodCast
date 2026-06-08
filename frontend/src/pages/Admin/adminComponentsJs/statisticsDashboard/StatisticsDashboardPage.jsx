@@ -337,6 +337,12 @@ function PreviewTimeBarChart({ items, color = "#7c4dff", emptyLabel, periodLabel
         aria-label="통계 막대 그래프"
         onMouseLeave={() => setHoveredPoint(null)}
       >
+        <defs>
+          <linearGradient id="statisticsLineChartGradient" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.28" />
+            <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
         {chart.ySteps.map((step, gridIndex) => {
           const y =
             chartPadding.top +
