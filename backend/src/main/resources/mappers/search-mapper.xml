@@ -15,13 +15,33 @@
             p.emotion_id as emotionId,
             group_concat(concat('#', h.hashtag) order by h.hashtag separator ' ') as tags,
             coalesce((select count(*) from user_post_like upl where upl.post_id = p.post_id), 0) as likes,
-            coalesce((select count(*) from comment_tbl c where c.post_id = p.post_id and c.deleted_yn = 'N'), 0) as comments,
+            coalesce((
+                select count(*)
+                from comment_tbl c
+                where c.post_id = p.post_id
+                  and c.deleted_yn = 'N'
+                  and not exists (
+                      select 1
+                      from admin_action_logs log
+                      where log.target_type = 'COMMENT'
+                        and log.target_id = c.comment_id
+                        and log.action_type = 'HIDE'
+                        and log.log_id = (
+                            select max(log_id)
+                            from admin_action_logs
+                            where target_type = 'COMMENT'
+                              and target_id = c.comment_id
+                              and action_type in ('HIDE', 'RESTORE')
+                        )
+                  )
+            ), 0) as comments,
             p.created_at as createdAt
         from post_tbl p
                  join members m on p.member_id = m.member_id
                  left join post_hashtag ph on p.post_id = ph.post_id
                  left join hashtag h on ph.hashtag_id = h.hashtag_id
         where p.deleted_yn = 'N'
+          and p.visibility = 'PUBLIC'
           and (
               lower(p.content) like concat('%', lower(#{query}), '%')
               or lower(m.name) like concat('%', lower(#{query}), '%')
@@ -80,7 +100,10 @@
             count(ph.post_hashtag_id) as postCount
         from hashtag h
                  left join post_hashtag ph on h.hashtag_id = ph.hashtag_id
+                 left join post_tbl p on p.post_id = ph.post_id
         where lower(h.hashtag) like concat('%', lower(#{query}), '%')
+          and p.deleted_yn = 'N'
+          and p.visibility = 'PUBLIC'
         group by h.hashtag_id, h.hashtag
         order by postCount desc
         limit 50
@@ -92,9 +115,14 @@
                 select
                     h.hashtag_id as hashtagId,
                     h.hashtag,
-                    h.use_count as useCount
+                    count(ph.post_hashtag_id) as useCount
                 from hashtag h
-                order by h.use_count desc, h.hashtag asc
+                         join post_hashtag ph on h.hashtag_id = ph.hashtag_id
+                         join post_tbl p on p.post_id = ph.post_id
+                where p.deleted_yn = 'N'
+                  and p.visibility = 'PUBLIC'
+                group by h.hashtag_id, h.hashtag
+                order by useCount desc, h.hashtag asc
                 limit #{limit}
             </when>
             <otherwise>
@@ -106,6 +134,7 @@
                          join post_hashtag ph on h.hashtag_id = ph.hashtag_id
                          join post_tbl p on p.post_id = ph.post_id
                 where p.deleted_yn = 'N'
+                  and p.visibility = 'PUBLIC'
                   and p.created_at &gt;= #{from}
                 group by h.hashtag_id, h.hashtag
                 order by useCount desc, h.hashtag asc
