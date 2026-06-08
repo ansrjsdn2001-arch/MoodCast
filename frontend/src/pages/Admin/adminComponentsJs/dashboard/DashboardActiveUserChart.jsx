@@ -451,13 +451,6 @@ export function DashboardActiveUserChart() {
               </text>
             ))}
           </svg>
-
-          <p className={styles.activeUserChartSummary}>
-            총 활성 사용자{" "}
-            <strong>{chartData.totalValue.toLocaleString()}명</strong>
-            &nbsp;·&nbsp; 최대 동시 접속{" "}
-            <strong>{chartData.maxDisplayValue.toLocaleString()}명</strong>
-          </p>
         </div>
       )}
     </section>

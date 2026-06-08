@@ -184,15 +184,3 @@
   font-weight: 800;
   dominant-baseline: middle;
 }
-
-.activeUserChartSummary {
-  margin: 0;
-  color: #475467;
-  font-size: 0.84rem;
-  font-weight: 800;
-  text-align: right;
-}
-
-.activeUserChartSummary strong {
-  color: #6f2cff;
-}
