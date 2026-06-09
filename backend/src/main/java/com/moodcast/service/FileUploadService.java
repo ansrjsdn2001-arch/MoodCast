@@ -124,13 +124,6 @@ public class FileUploadService {
 
                 String s3Url = buildPublicS3Url(key);
                 String viewUrl = buildViewUrl(baseUrl, key);
-            return Map.of(
-                    "url", s3Url,
-                    "s3Url", s3Url,
-                    "viewUrl", viewUrl,
-                    "filename", filename,
-                    "key", key
-            );
             return FileUploadResponse.builder()
                     .url(s3Url)
                     .s3Url(s3Url)
