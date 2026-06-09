@@ -131,6 +131,13 @@ public class FileUploadService {
                     "filename", filename,
                     "key", key
             );
+            return FileUploadResponse.builder()
+                    .url(s3Url)
+                    .s3Url(s3Url)
+                    .viewUrl(viewUrl)
+                    .filename(filename)
+                    .key(key)
+                    .build();
         } catch (IOException e) {
             throw new IllegalStateException("파일 업로드에 실패했습니다.", e);
         }
