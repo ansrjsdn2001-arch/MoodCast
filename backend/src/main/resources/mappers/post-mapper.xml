@@ -153,6 +153,7 @@
             p.emotion_id as emotionId,
             date_format(p.created_at, '%Y-%m-%d %H:%i') as createdAt,
             coalesce(m.profile_image_url, '') as profileImageUrl,
+            <!-- post_hashtag_id(연결 테이블 PK) 순으로 합치면 사용자가 입력한 해시태그 순서가 유지됨 -->
             coalesce((
                 select group_concat(concat('#', h.hashtag) order by ph.post_hashtag_id separator ' ')
                 from post_hashtag ph
@@ -224,6 +225,7 @@
             p.emotion_id as emotionId,
             date_format(p.created_at, '%Y-%m-%d %H:%i') as createdAt,
             coalesce(m.profile_image_url, '') as profileImageUrl,
+            <!-- 해시태그를 이름순이 아니라 입력 순서대로 보여주기 위한 정렬 기준임 -->
             coalesce((
                 select group_concat(concat('#', h.hashtag) order by ph.post_hashtag_id separator ' ')
                 from post_hashtag ph join hashtag h on ph.hashtag_id = h.hashtag_id
@@ -270,6 +272,7 @@
             p.emotion_id as emotionId,
             date_format(p.created_at, '%Y-%m-%d %H:%i') as createdAt,
             coalesce(m.profile_image_url, '') as profileImageUrl,
+            <!-- 인기글 조회에서도 같은 순서 규칙을 써야 화면마다 태그 순서가 일관됨 -->
             coalesce((
                 select group_concat(concat('#', h.hashtag) order by ph.post_hashtag_id separator ' ')
                 from post_hashtag ph join hashtag h on ph.hashtag_id = h.hashtag_id
@@ -336,6 +339,7 @@
             p.emotion_id as emotionId,
             date_format(p.created_at, '%Y-%m-%d %H:%i') as createdAt,
             coalesce(m.profile_image_url, '') as profileImageUrl,
+            <!-- 마이페이지 글 목록도 입력 순서로 노출되도록 동일하게 처리함 -->
             coalesce((
                 select group_concat(concat('#', h.hashtag) order by ph.post_hashtag_id separator ' ')
                 from post_hashtag ph join hashtag h on ph.hashtag_id = h.hashtag_id
@@ -641,6 +645,7 @@
             p.content as content,
             p.emotion_id as emotionId,
             date_format(p.created_at, '%Y-%m-%d %H:%i') as createdAt,
+            <!-- 저장한 글 목록도 같은 기준으로 맞춰야 태그 순서가 뒤바뀌지 않음 -->
             coalesce((
                 select group_concat(concat('#', h.hashtag) order by ph.post_hashtag_id separator ' ')
                 from post_hashtag ph join hashtag h on ph.hashtag_id = h.hashtag_id
