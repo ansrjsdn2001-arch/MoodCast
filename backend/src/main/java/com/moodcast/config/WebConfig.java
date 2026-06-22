@@ -24,7 +24,7 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedOrigins("http://localhost:5173",
                                 "http://127.0.0.1:5173",
                                 "http://3.39.49.9:5173",
-                        "http://moodcast-frontend-s3-qqqq.s3-website.ap-northeast-2.amazonaws.com")
+                        "http://moodcast-frontend-mgw.s3-website.ap-northeast-2.amazonaws.com")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true);
